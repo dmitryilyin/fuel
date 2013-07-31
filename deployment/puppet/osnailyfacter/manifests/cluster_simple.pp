@@ -141,7 +141,16 @@ Exec { logoutput => true }
         img_name                  => "TestVM",
         stage                     => 'glance-image',
       }
-      nova::manage::floating{$floating_hash:}
+      nova_floating_range{ $floating_hash:
+        ensure          => 'present',
+        pool            => 'nova',
+        username        => $access_hash[user],
+        api_key         => $access_hash[password],
+        auth_method     => 'password',
+        auth_url        => "http://${controller_node_address}:5000/v2.0/",
+        authtenant_name => $access_hash[tenant],
+      }
+
       Class[glance::api]        -> Class[openstack::img::cirros]
     }
 
