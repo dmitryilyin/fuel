@@ -14,7 +14,13 @@ class murano::rabbitmq(
 ){
 
   if $::osfamily != 'RedHat' {
-    fail("OS ${::osfamily} is not supported yet!")
+    $init_script = 'rabbitmq-init-centos.erb'
+    $install_init_script_cmd = "chkconfig --add '${init_script_path}'"
+  } elsif $::osfamily != 'Debian' {
+    $init_script = 'rabbitmq-init-ubuntu.erb'
+    $install_init_script_cmd = "/bin/true"
+  } else {
+    fail("$::osfamily is not supported!")
   }
 
   file { 'rabbitmq_config' :
@@ -30,12 +36,11 @@ class murano::rabbitmq(
     owner   => 'root',
     group   => 'root',
     mode    => '0755',
-    content => template('murano/rabbitmq-init-centos.erb'),
+    content => template("murano/${init_script}"),
   }
 
-  # chkconfig is idempotent by itself
   exec { 'install_init_script' :
-    command => "chkconfig --add '${init_script_path}'",
+    command => $install_init_script_cmd,
     path    => [ '/bin', '/sbin', '/usr/bin', '/usr/sbin' ],
   }
 
