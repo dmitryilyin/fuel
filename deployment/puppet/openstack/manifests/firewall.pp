@@ -60,160 +60,134 @@ class openstack::firewall (
     proto  => 'icmp',
     action => 'accept',
   }->
-
   firewall { '001 accept all to lo interface':
     proto   => 'all',
     iniface => 'lo',
     action  => 'accept',
   }->
-
   firewall { '002 accept related established rules':
     proto   => 'all',
     state   => ['RELATED', 'ESTABLISHED'],
     action  => 'accept',
-  }
-
+  }->
   firewall {'020 ssh':
     port   => $ssh_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
-
+  }->
   firewall { '100 http':
     port   => [$http_port, $https_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'101 mysql':
     port   => [$mysql_port, $mysql_backend_port, $mysql_gcomm_port, $galera_ist_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'102 keystone':
     port   => [$keystone_public_port,$keystone_admin_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'103 swift':
     port   => [$swift_proxy_port, $swift_object_port, $swift_container_port, $swift_account_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'104 glance':
     port   => [$glance_api_port, $glance_reg_port, $glance_nova_api_ec2_port,],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'105 nova ':
     port   => [$nova_api_compute_port,$nova_api_metadata_port,$nova_api_volume_port, $nova_vncproxy_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'106 rabbitmq ':
     port   => [$erlang_epmd_port, $erlang_rabbitmq_port, $erlang_rabbitmq_backend_port, $erlang_inet_dist_port],
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'107 memcached tcp':
     port   => $memcached_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'107 memcached udp':
     port   => $memcached_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'108 rsync':
     port   => $rsync_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'109 iscsi ':
     port   => $iscsi_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'110 quantum ':
     port   => $quantum_api_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'111 dns-server':
     port   => $dns_server_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'111 dhcp-server':
     port   => $dhcp_server_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'112 ntp-server':
     port   => $ntp_server_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'113 corosync-input':
     port   => $corosync_input_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'114 corosync-output':
     port   => $corosync_output_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'115 openvswitch db':
     port   => $openvswitch_db_port,
     proto  => 'udp',
     action => 'accept',
-  }
-
+  }->
   firewall {'116 nrpe-server':
     port   => $nrpe_server_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'117 libvirt':
     port   => $libvirt_port,
     proto  => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall {'118 vnc ports':
     port => "5900-6100",
     proto => 'tcp',
     action => 'accept',
-  }
-
+  }->
   firewall { '333 accept gre':
     chain   => 'PREROUTING',
     table   => 'raw',
     proto   => 'gre',
     action  => 'notrack',
- }
-
+  }->
   firewall { '999 drop all other requests':
     action => 'drop',
   }
+
 }
