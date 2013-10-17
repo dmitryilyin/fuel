@@ -31,6 +31,7 @@ class heat::engine (
   $use_syslog                    = 'False',
   $ocf_scripts_dir               = '/usr/lib/ocf/resource.d',
   $ocf_scripts_provider          = 'mirantis',
+  $sql_connection                = 'mysql://heat:heat@localhost/heat'
 ) {
 
   include heat::params
@@ -156,12 +157,31 @@ class heat::engine (
     'DEFAULT/rpc_backend'                                     : value => $rpc_backend;
     'DEFAULT/use_stderr'                                      : value => $use_stderr;
     'DEFAULT/use_syslog'                                      : value => $use_syslog;
+    'DEFAULT/sql_connection'                                  : value => $sql_connection;
   }
 
-  Package['heat-common'] -> Package['heat-engine'] -> File['/etc/heat/heat-engine.conf'] -> Heat_engine_config<||> ~> Service['heat-engine']
-  File['/etc/heat/heat-engine.conf'] -> Exec['heat-encryption-key-replacement'] -> Service['heat-engine']
+  #db_sync
+
+  file { 'db_sync_script' :
+    ensure  => present,
+    path    => $::heat::params::heat_db_sync_command,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    content => template('heat/heat_db_sync.sh.erb'),
+  }
+
+  exec { 'heat_db_sync' :
+    command     => $::heat::params::heat_db_sync_command,
+    path        => [ '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/usr/local/bin', '/usr/local/sbin' ],
+    user        => 'heat',
+    refreshonly => true,
+    logoutput   => 'on_failure',
+  }
+
+  Package['heat-engine'] -> File['/etc/heat/heat-engine.conf'] ~> Exec['heat-encryption-key-replacement'] -> Heat_engine_config<||> -> File['db_sync_script'] -> Exec['heat_db_sync'] ~> Service['heat-engine']
+  File['/etc/heat/heat-engine.conf']  -> Service['heat-engine']
   File['/etc/heat/heat-engine.conf'] ~> Service['heat-engine']
-  Class['heat::db'] -> Service['heat-engine']
-  Heat_engine_config<||> -> Exec['heat_db_sync'] -> Service['heat-engine']
+  Heat_engine_config<||> ->  -> Service['heat-engine']
 
 }

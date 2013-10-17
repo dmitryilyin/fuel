@@ -30,11 +30,6 @@ class heat::api (
 
   validate_string($keystone_password)
 
-  package { 'python-routes':
-    ensure => installed,
-    name   => $::heat::params::deps_routes_package_name,
-  }
-
   package { 'heat-api':
     ensure  => installed,
     name    => $::heat::params::api_package_name,
@@ -103,11 +98,9 @@ class heat::api (
     'filter:authtoken/admin_password'       : value => $keystone_password;
   }
 
-  Package['heat-common'] -> Package['heat-api'] -> Heat_api_config<||> -> Heat_api_paste_ini<||>
+  Package['heat-api'] -> Heat_api_config<||> -> Heat_api_paste_ini<||>
   Heat_api_config<||> ~> Service['heat-api']
   Heat_api_paste_ini<||> ~> Service['heat-api']
   Package['heat-api'] ~> Service['heat-api']
-  Class['heat::db'] -> Service['heat-api']
-  Exec['heat_db_sync'] -> Service['heat-api'] 
 
 }

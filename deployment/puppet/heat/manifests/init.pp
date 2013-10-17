@@ -53,6 +53,7 @@ class heat(
   }
 
   class { 'heat::install' :
+    sql_connection                 => "mysql://${heat_db_user}:${heat_db_password}@${heat_db_host}/${heat_db_name}",
   }
 
   class { 'heat::cli' :
@@ -174,11 +175,5 @@ class heat(
     rabbit_port                   => $heat_rabbit_port,
     rpc_backend                   => $heat_rpc_backend,
   }
-  
-  class { 'heat::preinstall' :
-    sql_connection                 => "mysql://${heat_db_user}:${heat_db_password}@${heat_db_host}/${heat_db_name}",
-  }
-  
-  Class['heat::preinstall'] -> Class['heat::install']
 
 }

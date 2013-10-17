@@ -96,11 +96,9 @@ class heat::api_cloudwatch (
     'filter:authtoken/admin_password'       : value => $keystone_password;
   }
 
-  Package['heat-common'] -> Package['heat-api-cloudwatch'] -> Heat_api_cloudwatch_config<||> -> Heat_api_cloudwatch_paste_ini<||>
+  Package['heat-api-cloudwatch'] -> Heat_api_cloudwatch_config<||> -> Heat_api_cloudwatch_paste_ini<||>
   Heat_api_cloudwatch_config<||> ~> Service['heat-api-cloudwatch']
   Heat_api_cloudwatch_paste_ini<||> ~> Service['heat-api-cloudwatch']
   Package['heat-api-cloudwatch'] ~> Service['heat-api-cloudwatch']
-  Class['heat::db'] -> Service['heat-api-cloudwatch']
-  Exec['heat_db_sync'] -> Service['heat-api-cloudwatch'] 
 
 }

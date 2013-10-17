@@ -98,11 +98,9 @@ class heat::api_cfn (
     'filter:authtoken/admin_password'       : value => $keystone_password;
   }
 
-  Package['heat-common'] -> Package['heat-api-cfn'] -> Heat_api_cfn_config<||> -> Heat_api_cfn_paste_ini<||>
+  Package['heat-api-cfn'] -> Heat_api_cfn_config<||> -> Heat_api_cfn_paste_ini<||>
   Heat_api_cfn_config<||> ~> Service['heat-api-cfn']
   Heat_api_cfn_paste_ini<||> ~> Service['heat-api-cfn']
   Package['heat-api-cfn'] ~> Service['heat-api-cfn']
-  Class['heat::db'] -> Service['heat-api-cfn']
-  Exec['heat_db_sync'] -> Service['heat-api-cfn'] 
 
 }

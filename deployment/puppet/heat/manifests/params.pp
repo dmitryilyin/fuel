@@ -39,8 +39,6 @@ class heat::params {
       $api_cfn_service_name         = 'heat-api-cfn'
       $engine_service_name          = 'heat-engine'
 
-      $db_sync_command              = '/usr/bin/heat-manage db_sync'
-      $legacy_db_sync_command       = '/usr/bin/python -m heat.db.sync'
       $heat_db_sync_command         = '/usr/local/bin/heat_db_sync'
 
     }
