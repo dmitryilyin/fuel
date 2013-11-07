@@ -169,6 +169,37 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
     end
   end
 
+  def already_starting?
+    get_pending_operations
+    @pending_operations.select {|op| op.attributes['operation'] == 'start'}.any?
+  end
+
+  def get_pending_operations
+    self.class.get_cib
+    self.class.get_nodes
+    @pending_operations = []
+    @@nodes.each do |node|
+      # skip offline nodes
+      next unless node[:state] == :online
+      debug("getting pending ops on #{node[:uname]} for #{@resource[:name]}")
+      # get all operations for this resource from cib
+      all_operations = XPath.match(@@cib,"cib/status/node_state[@uname='#{node[:uname]}']/lrm/lrm_resources/lrm_resource/lrm_rsc_op[starts-with(@id,'#{@resource[:name]}')]")
+      debug("ALL OPERATIONS:\n\n #{all_operations.inspect}")
+      next if all_operations.nil?
+      # select operations that have pending status code
+      pending_ops = all_operations.select{|op| op.attributes['op-status'].to_i == -1 }   
+      debug("PENDING OPERATIONS:\n\n #{pending_ops.inspect}")
+      # add operations of this node to the global array and continue to other nodes
+      @pending_operations += pending_ops
+    end
+    # sort operations by call-id
+    @pending_operations.sort! do
+      |a,b| a.attributes['call-id'].to_i <=> b.attributes['call-id'].to_i
+    end
+    debug("ALL PENDING OPERATIONS:\n\n #{@pending_operations.inspect}")
+    @pending_operations
+  end
+
   def get_last_successful_operations
     self.class.get_cib
     self.class.get_nodes
@@ -216,10 +247,6 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
     @last_successful_operations
   end
 
-  #  def get_operations
-  #     XPath.match(@@operations,"lrm_rsc_op")
-  #  end
-
   def enable
     crm('resource','manage', get_service_name)
   end
@@ -237,10 +264,20 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
 
   def start
     get_service_hash
+    # wait while service is starting but not longer then timeout
+    Timeout::timeout(@service[:start_timeout],Puppet::Error) do
+      while already_starting?
+        sleep 1
+      end
+    end
+    # exit if service is already started
+    return if status == :running
+    # enable and start service
     enable
     crm('resource', 'start', get_service_name)
     debug("Starting countdown for resource start")
     debug("Start timeout is #{@service[:start_timeout]}")
+    # wait until service starts but not longer then timeout
     Timeout::timeout(@service[:start_timeout],Puppet::Error) do
       loop do
         break if status == :running
