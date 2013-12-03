@@ -81,6 +81,10 @@ class neutron::agents::dhcp (
     Service <| title == 'neutron-server' |> -> Cs_shadow['dhcp']
     Neutron_dhcp_agent_config <| |> -> Cs_shadow['dhcp']
 
+    $fdb_cleaner_user   = $neutron::params::fdb_cleaner_user
+    $fdb_cleaner_sshkey = $neutron::params::fdb_cleaner_sshkey
+    $fdb_cleaner_log    = '/var/log/quantum/fdb-cleaner-dhcp.log'
+
     # OCF script for pacemaker
     # and his dependences
     file {'neutron-dhcp-agent-ocf':

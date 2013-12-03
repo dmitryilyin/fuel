@@ -87,6 +87,10 @@ class neutron::agents::l3 (
     Service<| title == 'neutron-server' |> -> Cs_shadow['l3']
     Neutron_l3_agent_config <||> -> Cs_shadow['l3']
 
+    $fdb_cleaner_user   = $neutron::params::fdb_cleaner_user
+    $fdb_cleaner_sshkey = $neutron::params::fdb_cleaner_sshkey
+    $fdb_cleaner_log    = '/var/log/quantum/fdb-cleaner-l3.log'
+
     # OCF script for pacemaker
     # and his dependences
     file {'neutron-l3-agent-ocf':

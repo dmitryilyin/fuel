@@ -301,6 +301,7 @@ neutron_dhcp_agent_start() {
     done
 
     sleep 13 ; q-agent-cleanup.py --agent=dhcp --reschedule --remove-dead 2>&1 >> /var/log/neutron/rescheduling.log
+    fuel-fdb-cleaner --ssh-username "<%= @fdb_cleaner_user %>" --ssh-keyfile "<%= @fdb_cleaner_sshkey %>" -l "<%= @fdb_cleaner_log %>"
 
     ocf_log info "OpenStack DHCP Server (neutron-dhcp-agent) started"
     return $OCF_SUCCESS
