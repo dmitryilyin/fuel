@@ -16,6 +16,9 @@ class neutron (
   $syslog_log_facility  = 'LOCAL4',
   $syslog_log_level     = 'WARNING',
   $server_ha_mode       = false,
+  $ssh_private_key      = '/var/lib/astute/quantum/quantum',
+  $ssh_public_key       = '/var/lib/astute/quantum/quantum.pub',
+
 ) {
   include 'neutron::params'
 
@@ -197,6 +200,24 @@ class neutron (
         Neutron_config<||> ->
           Neutron_api_config<||> ->
             Anchor[$endpoint_neutron_main_configuration]
+
+  $fuel_utils_package = $neutron::params::fuel_utils_package
+
+  package { $fuel_utils_package :
+    ensure => installed,
+  }
+
+  install_ssh_keys { 'quantum_ssh_key' :
+    ensure           => present,
+    user             => 'quantum',
+    private_key_path => $ssh_private_key,
+    public_key_path  => $ssh_public_key,
+    private_key_name => 'id_rsa',
+    public_key_name  => 'id_rsa.pub',
+    authorized_keys  => 'authorized_keys',
+  }
+
+  Anchor['quantum-init'] -> Package[$fuel_utils_package] -> Install_ssh_keys['quantum_ssh_key'] -> Anchor[$endpoint_quantum_main_configuration]
 
   anchor {'neutron-init-done':}
 }

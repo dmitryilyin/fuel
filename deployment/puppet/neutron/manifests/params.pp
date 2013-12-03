@@ -1,4 +1,6 @@
 class neutron::params {
+  $fuel_utils_package = 'fuel-utils'
+
   case $::osfamily {
     'Debian', 'Ubuntu': {
       $package_name       = 'neutron-common'
