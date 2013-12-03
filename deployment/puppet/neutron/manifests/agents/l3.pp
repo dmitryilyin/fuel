@@ -90,11 +90,11 @@ class neutron::agents::l3 (
     # OCF script for pacemaker
     # and his dependences
     file {'neutron-l3-agent-ocf':
-      path=>'/usr/lib/ocf/resource.d/mirantis/neutron-agent-l3',
-      mode => 755,
-      owner => root,
-      group => root,
-      source => "puppet:///modules/neutron/ocf/neutron-agent-l3",
+      path    => '/usr/lib/ocf/resource.d/mirantis/quantum-agent-l3',
+      mode    => '0755',
+      owner   => 'root',
+      group   => 'root',
+      content => template('neutron/ocf/quantum-agent-l3.erb'),
     }
     Package['pacemaker'] -> File['neutron-l3-agent-ocf']
     File['neutron-l3-agent-ocf'] -> Cs_resource["p_${::neutron::params::l3_agent_service}"]

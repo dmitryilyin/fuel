@@ -92,11 +92,11 @@ class neutron::agents::ovs (
     # OCF script for pacemaker
     # and his dependences
     file {'neutron-ovs-agent-ocf':
-      path=>'/usr/lib/ocf/resource.d/mirantis/neutron-agent-ovs',
-      mode => 755,
-      owner => root,
-      group => root,
-      source => "puppet:///modules/neutron/ocf/neutron-agent-ovs",
+      path    => '/usr/lib/ocf/resource.d/mirantis/quantum-agent-ovs',
+      mode    => '0755',
+      owner   => 'root',
+      group   => 'root',
+      content => template('neutron/ocf/quantum-agent-ovs.erb'),
     }
     File['neutron-ovs-agent-ocf'] -> Cs_resource["p_${::neutron::params::ovs_agent_service}"]
 

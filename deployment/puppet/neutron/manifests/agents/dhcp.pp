@@ -84,11 +84,11 @@ class neutron::agents::dhcp (
     # OCF script for pacemaker
     # and his dependences
     file {'neutron-dhcp-agent-ocf':
-      path=>'/usr/lib/ocf/resource.d/mirantis/neutron-agent-dhcp',
-      mode => 755,
-      owner => root,
-      group => root,
-      source => "puppet:///modules/neutron/ocf/neutron-agent-dhcp",
+      path    => '/usr/lib/ocf/resource.d/mirantis/quantum-agent-dhcp',
+      mode    => '0755',
+      owner   => 'root',
+      group   => 'root',
+      content => template('neutron/ocf/quantum-agent-dhcp.erb'),
     }
     Package['pacemaker'] -> File['neutron-dhcp-agent-ocf']
     File['neutron-dhcp-agent-ocf'] -> Cs_resource["p_${::neutron::params::dhcp_agent_service}"]
