@@ -207,9 +207,9 @@ class neutron (
     ensure => installed,
   }
 
-  install_ssh_keys { 'quantum_ssh_key' :
+  install_ssh_keys { 'neutron_ssh_key' :
     ensure           => present,
-    user             => 'quantum',
+    user             => 'neutron',
     private_key_path => $ssh_private_key,
     public_key_path  => $ssh_public_key,
     private_key_name => 'id_rsa',
@@ -217,7 +217,7 @@ class neutron (
     authorized_keys  => 'authorized_keys',
   }
 
-  Anchor['quantum-init'] -> Package[$fuel_utils_package] -> Install_ssh_keys['quantum_ssh_key'] -> Anchor[$endpoint_quantum_main_configuration]
+  Anchor['neutron-init'] -> Package[$fuel_utils_package] -> Install_ssh_keys['neutron_ssh_key'] -> Anchor[$endpoint_neutron_main_configuration]
 
   anchor {'neutron-init-done':}
 }

@@ -1,7 +1,7 @@
 class neutron::params {
   $fuel_utils_package = 'fuel-utils'
-  $fdb_cleaner_user   = 'quantum'
-  $fdb_cleaner_sshkey = '/var/lib/quantum/.ssh/id_rsa'
+  $fdb_cleaner_user   = 'neutron'
+  $fdb_cleaner_sshkey = '/var/lib/neutron/.ssh/id_rsa'
 
   case $::osfamily {
     'Debian', 'Ubuntu': {
