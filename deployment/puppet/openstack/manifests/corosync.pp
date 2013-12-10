@@ -74,6 +74,10 @@ cs_property { 'start-failure-is-fatal':
   ensure => present,
   value  => "false",
 } -> Anchor['corosync-done']
+cs_property {'symmetric-cluster':
+  ensure => present,
+  value  => 'false',
+}-> Anchor['corosync-done']
 #
 #cs_property { 'placement-strategy':
 #  cib => 'shadow',
