@@ -30,7 +30,7 @@ define cluster::virtual_ip (
 
   cs_resource { $vip_name:
     ensure          => present,
-    cib             => $cib_name,
+#    cib             => $cib_name,
     primitive_class => 'ocf',
     provided_by     => 'heartbeat',
     primitive_type  => 'IPaddr2',

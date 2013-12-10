@@ -85,7 +85,7 @@ class ceilometer::agent::central (
     File['ceilometer-agent-central-ocf'] -> Cs_resource[$res_name]
     cs_resource { $res_name:
       ensure          => present,
-      cib             => $cib_name,
+#      cib             => $cib_name,
       primitive_class => 'ocf',
       provided_by     => 'mirantis',
       primitive_type  => 'ceilometer-agent-central',

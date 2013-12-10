@@ -67,7 +67,7 @@ class heat::engine (
 
     cs_resource { $service_name :
       ensure          => present,
-      cib             => $service_name,
+#      cib             => $service_name,
       primitive_class => 'ocf',
       provided_by     => $ocf_scripts_provider,
       primitive_type  => $service_name,

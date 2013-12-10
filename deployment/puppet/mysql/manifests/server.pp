@@ -166,7 +166,7 @@ class mysql::server (
       primitive_class => 'ocf',
       provided_by     => 'heartbeat',
       primitive_type  => 'mysql',
-      cib             => 'mysql',
+      #cib             => 'mysql',
       multistate_hash => {'type'=>'master'},
       ms_metadata     => {'notify'             => "true"},
       parameters      => {
