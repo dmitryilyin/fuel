@@ -18,8 +18,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
   has_feature :enableable
   has_feature :ensurable
   def self.get_cib
-    raw, _status = dump_cib
-    @@cib=REXML::Document.new(raw)
+    @@cib=REXML::Document.new(dump_cib)
   end
 
   # List all services of this type.
@@ -51,7 +50,9 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
     @service={}
     default_start_timeout = 30
     default_stop_timeout = 30
-    cib_resource =  XPath.match(@@resources, "//primitive[@id=\'#{@resource[:name]}\']").first
+    unless cib_resource =  XPath.match(@@resources, "//primitive[@id=\'#{@resource[:name]}\']").first
+      raise(Puppet::Error,"resource #{@resource[:name]} not found")
+    end
     @service[:msname] = ['master','clone'].include?(cib_resource.parent.name) ? cib_resource.parent.attributes['id'] : nil
     @service[:name] = @resource[:name]
     @service[:class] = cib_resource.attributes['class']
@@ -83,7 +84,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
 
   def get_service_name
     get_service_hash
-    service_name = @service[:msname] ? @service[:msname] : @service[:name]
+    @service[:msname] ? @service[:msname] : @service[:name]
   end
 
   def self.get_stonith
@@ -106,7 +107,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
       else
         state = :unclean
       end
-    elsif !(in_ccm == "true") && (ha_state =='dead') && (crmd == 'offline') && !(shutdown == 0)
+    elsif (in_ccm != 'true') && (ha_state =='dead') && (crmd == 'offline') && (shutdown != 0)
       state = :offline
     elsif shutdown == 0
       state = :unclean
@@ -118,7 +119,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
 
   def self.get_node_state_no_stonith(ha_state,in_ccm,crmd,join,expected,shutdown)
     state = :unclean
-    if !(in_ccm == "true") || (ha_state == 'dead')
+    if (in_ccm != 'true') || (ha_state == 'dead')
       state = :offline
     elsif crmd == 'online'
       if join == 'member'
@@ -126,7 +127,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
       else
         state = :offline
       end
-    elsif !(shutdown == "0")
+    elsif shutdown != '0'
       state = :offline
     else
       state = :unclean
@@ -203,9 +204,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
         debug("last operations: #{last_op.attributes['operation']}")
         last_successful_op = last_op.attributes['operation']
       else
-        if last_op.attributes['rc-code'].to_i == 0
-          last_successful_op = 'start'
-        elsif  last_op.attributes['rc-code'].to_i == 8
+        if [8,0].include?(last_op.attributes['rc-code'].to_i)
           last_successful_op = 'start'
         else
           last_successful_op = 'stop'
@@ -218,7 +217,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
         end
       end
       debug("LAST SUCCESSFUL OP :\n\n #{last_successful_op.inspect}")
-      @last_successful_operations << last_successful_op if !last_successful_op.nil?
+      @last_successful_operations << last_successful_op if last_successful_op
     end
     @last_successful_operations
   end
@@ -282,7 +281,7 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
     get_last_successful_operations
     if @last_successful_operations.any? {|op| ['start','promote'].include?(op)}
       return :running
-    elsif @last_successful_operations.all? {|op| op == 'stop'} or @last_successful_operations.empty?
+    elsif @last_successful_operations.all? {|op| op == 'stop'} || @last_successful_operations.empty?
       return :stopped
     else
       raise(Puppet::Error,"resource #{@resource[:name]} in unknown state")
