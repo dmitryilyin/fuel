@@ -226,16 +226,19 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
   #     XPath.match(@@operations,"lrm_rsc_op")
   #  end
 
-  def get_constraint_id
-    @resource[:name] + '_on_' + `uname -n`.chomp
+  def has_location?(location_id)
+    XPath.match(@@cib, "/cib/configuration/constraints/rsc_location[@id='#{location_id}']").any?
   end
 
-  def has_location?
-    XPath.match(@@cib, "/cib/configuration/constraints/rsc_location[@id='#{get_constraint_id}']").any?
-  end
-
-  def create_location
-    crm('configure', 'location', get_constraint_id, @resource[:name], '1:', `uname -n`.chomp) unless has_location?
+  def create_location(name)
+    host = `uname -n`.chomp
+    constraint = name + '_on_' + host
+    unless has_location? constraint
+      Puppet.debug "Create location: #{constraint}"
+      crm('configure', 'location', constraint, name, '100:', host)
+    else
+      Puppet.debug "Location #{constraint} already exists!"
+    end
   end
 
   def enable
@@ -255,7 +258,8 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Cor
 
   def start
     get_service_hash
-    create_location
+    create_location @service[:name]
+    create_location @service[:msname] if @service[:msname]
     enable
     crm('resource', 'start', get_service_name)
     debug("Starting countdown for resource start")
