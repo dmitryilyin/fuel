@@ -1,19 +1,14 @@
 class murano::dashboard (
-  $settings_py                    = '/usr/share/openstack-dashboard/openstack_dashboard/settings.py',
-  $murano_url_string              = $::murano::params::default_url_string,
-  $local_settings                 = $::murano::params::local_settings_path,
-) {
-
-  include murano::params
-
-  $dashboard_deps = $::murano::params::murano_dashboard_deps
-  $package_name   = $::murano::params::murano_dashboard_package_name
+  $local_settings_path = $murano::params::local_settings_path,
+  $murano_url_string   = $murano::params::default_url_string,
+  $dashboard_deps      = $murano::params::dashboard_deps_name,
+  $package_name        = $murano::params::dashboard_package_name,
+) inherits murano::params {
 
   file_line { 'murano_url' :
     ensure  => 'present',
-    path    => $local_settings,
+    path    => $local_settings_path,
     line    => $murano_url_string,
-    require => File[$local_settings],
   }
 
   package { 'murano_dashboard' :
@@ -26,5 +21,6 @@ class murano::dashboard (
   }
 
   Package[$dashboard_deps] -> Package['murano_dashboard'] ~> Service <| title == 'httpd' |>
+  File <| title == $local_settings_path |> -> File_line['murano_url']
 
 }
