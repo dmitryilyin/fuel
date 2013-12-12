@@ -17,7 +17,6 @@ class murano::params {
   $murano_repository_service_name = 'openstack-murano-repository'
   
   $default_url_string           = "MURANO_API_URL = 'http://127.0.0.1:8082'"
-  $default_metadata_url_string  = "MURANO_METADATA_URL = 'http://127.0.0.1:8084'"
 
   case $::osfamily {
     'RedHat': {
