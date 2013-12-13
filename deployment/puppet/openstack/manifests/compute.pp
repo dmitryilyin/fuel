@@ -122,7 +122,7 @@ class openstack::compute (
   $use_syslog                    = false,
   $syslog_log_facility           = 'LOCAL6',
   $syslog_log_facility_cinder    = 'LOCAL3',
-  $syslog_log_facility_quantum   = 'LOCAL4',
+  $syslog_log_facility_neutron   = 'LOCAL4',
   $syslog_log_level = 'WARNING',
   $nova_rate_limits              = undef,
   $cinder_rate_limits            = undef,
@@ -346,7 +346,7 @@ class openstack::compute (
       debug           => $debug,
       use_syslog           => $use_syslog,
       syslog_log_level     => $syslog_log_level,
-      syslog_log_facility  => $syslog_log_facility_quantum,
+      syslog_log_facility  => $syslog_log_facility_neutron,
     }
 
     #todo: Quantum plugin and database connection not need on compute.
