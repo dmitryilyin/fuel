@@ -15,8 +15,9 @@ class murano::params {
   $api_service_name        = 'openstack-murano-api'
   $repository_service_name = 'openstack-murano-repository'
   
-  $default_url_string = "MURANO_API_URL = 'http://127.0.0.1:8082'"
-  $settings_path      = '/usr/share/openstack-dashboard/openstack_dashboard/settings.py'
+  $api_url       = "MURANO_API_URL = 'http://127.0.0.1:8082'"
+  $metadata_url  = "MURANO_METADATA_URL = 'http://127.0.0.1:8084'"
+  $settings_path = '/usr/share/openstack-dashboard/openstack_dashboard/settings.py'
 
   case $::osfamily {
     'RedHat': {

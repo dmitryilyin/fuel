@@ -5,9 +5,12 @@ class murano::db::mysql(
   $dbhost        = 'localhost',
   $charset       = 'utf8',
   $allowed_hosts = undef,
-) {
+) inherits murano::params {
 
-  include 'murano::params'
+  include 'stdlib'
+
+  anchor { 'murano-db-start' :}
+  anchor { 'murano-db-end' :}
 
   mysql::db { $dbname :
     user     => $user,
@@ -23,11 +26,9 @@ class murano::db::mysql(
       password  => $password,
       database  => $dbname,
     }
+    Anchor['murano-db-start'] -> Mysql::Db[$dbname] -> Murano::Db::Mysql::Host_access[$allowed_hosts] -> Anchor['murano-db-end']
+  } else {
+    Anchor['murano-db-start'] -> Mysql::Db[$dbname] -> Anchor['murano-db-end']
   }
-  
-  $services = [ 'murano::conductor', 'murano::api' ]
-  Database[$dbname] -> Class[$services]
-  Database_user["${user}@${dbhost}"] -> Class[$services]
-  Database_grant["${user}@${dbhost}/${dbname}"] -> Class[$services]
 
 }

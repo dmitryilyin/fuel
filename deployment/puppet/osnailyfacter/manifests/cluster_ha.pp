@@ -421,21 +421,25 @@ class osnailyfacter::cluster_ha {
       if $murano_hash['enabled'] {
 
         class { 'murano' :
-          murano_api_host          => $controller_node_address,
+          api_host          => $controller_node_address,
+          metadata_host     => $controller_node_address,
 
-          murano_rabbit_host       => $controller_node_public,
-          murano_rabbit_login      => 'murano',
-          murano_rabbit_password   => $heat_hash['rabbit_password'],
+          rabbit_host       => $controller_node_public,
+          rabbit_login      => 'murano',
+          rabbit_password   => $heat_hash['rabbit_password'],
 
-          murano_db_host           => $controller_node_address,
-          murano_db_password       => $murano_hash['db_password'],
+          db_host           => $controller_node_address,
+          db_password       => $murano_hash['db_password'],
 
-          murano_keystone_host     => $controller_node_address,
-          murano_keystone_user     => 'admin',
-          murano_keystone_password => 'admin',
-          murano_keystone_tenant   => 'admin',
+          keystone_host     => $controller_node_address,
+          keystone_user     => 'admin',
+          keystone_password => 'admin',
+          keystone_tenant   => 'admin',
 
-          use_neutron              => $::use_quantum,
+          use_neutron       => $::use_quantum,
+          use_syslog        => $::fuel_settings['use_syslog'],
+          verbose           => $verbose,
+          debug             => $debug,
         }
 
        Class['heat'] -> Class['murano']

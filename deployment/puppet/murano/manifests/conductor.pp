@@ -1,15 +1,18 @@
 # Installs & configure the murano conductor  service
 
 class murano::conductor (
+  $debug                               = true,
+  $verbose                             = true,
+  $use_neutron                         = true,
+  $use_syslog                          = true,
+  $syslog_facility                     = 'LOG_LOCAL0',
   $log_file                            = '/var/log/murano/conductor.log',
-  $debug                               = 'True',
-  $verbose                             = 'True',
-  $data_dir                            = '/etc/murano',
+  $data_dir                            = '/tmp/muranoconductor-cache',
   $max_environments                    = '20',
   $auth_url                            = 'http://127.0.0.1:5000/v2.0',
   $rabbit_host                         = '127.0.0.1',
   $rabbit_port                         = '5672',
-  $rabbit_ssl                          = 'False',
+  $rabbit_ssl                          = false,
   $rabbit_ca_certs                     = '',
   $rabbit_ca                           = '',
   $rabbit_login                        = 'murano',
@@ -17,19 +20,18 @@ class murano::conductor (
   $rabbit_virtual_host                 = '/',
   $init_scripts_dir                    = '/etc/murano/init-scripts',
   $agent_config_dir                    = '/etc/murano/agent-config',
-  $use_neutron                         = true,
-) {
-
-  include murano::params
+  $package_name                        = $murano::params::conductor_package_name,
+  $service_name                        = $murano::params::conductor_service_name,
+) inherits murano::params {
 
   package { 'murano_conductor':
     ensure => installed,
-    name   => $murano::params::conductor_package_name,
+    name   => $package_name,
   }
 
   service { 'murano_conductor':
     ensure     => 'running',
-    name       => $murano::params::conductor_service_name,
+    name       => $service_name,
     enable     => true,
     hasstatus  => true,
     hasrestart => true,
@@ -45,6 +47,8 @@ class murano::conductor (
     'DEFAULT/log_file'                 : value => $log_file;
     'DEFAULT/debug'                    : value => $debug;
     'DEFAULT/verbose'                  : value => $verbose;
+    'DEFAULT/use_syslog'               : value => $use_syslog;
+    'DEFAULT/syslog-log-facility'      : value => $syslog_facility;
     'DEFAULT/data_dir'                 : value => $data_dir;
     'DEFAULT/max_environments'         : value => $max_environments;
     'DEFAULT/init_scripts_dir'         : value => $init_scripts_dir;
