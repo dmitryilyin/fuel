@@ -7,12 +7,23 @@ pre_xml="pre.xml"
 post_xml="post.xml"
 run_xml="run.xml"
 
+check_pwd() {
+  current_dir="`pwd`"
+  current_dir=`basename "${current_dir}"`
+  if [ "${current_dir}" != 'tasks' ]; then
+    echo "You should ran tasks from the root of your 'tasks' folder!"
+    exit 1
+  fi
+}
+
 prepare() {
+  check_pwd
   task_file="${0}"
   task_dir=`dirname ${0}`
-  cd "${task_dir}"
-  task_dir=`pwd`
-  task_name=`basename ${task_dir}`
+  #cd "${task_dir}"
+  #task_dir=`pwd`
+  #task_name=`basename ${task_dir}`
+  task_name="`echo ${task_dir} | sed -e 's/^\.*\/*//g' -e 's/\//::/g'`"
   task_type=`basename ${task_file}`
   mkdir -p "${reports}/${task_name}"
 }
@@ -68,8 +79,8 @@ EOF
 prepare
 
 if [ "${task_type}" = "run" ]; then
-  if [ -f "${manifest}" ]; then
-    puppet apply --detailed-exitcodes -vd "${manifest}"
+  if [ -f "${task_dir}/${manifest}" ]; then
+    puppet apply --detailed-exitcodes -vd "${task_dir}/${manifest}"
     ec="${?}"
     if [ "${ec}" = "0" -o "${ec}" = "2" ]; then
       puppet_ok_xml > "${reports}/${task_name}/${run_xml}"
@@ -84,7 +95,8 @@ if [ "${task_type}" = "run" ]; then
     exit 1
   fi
 elif [ "${task_type}" = "pre" ]; then
-  if [ -f "${pre_spec}" ]; then
+  if [ -f "${task_dir}/${pre_spec}" ]; then
+    cd "${task_dir}"
     rspec -f RspecJunitFormatter --out "${reports}/${task_name}/${pre_xml}" "${pre_spec}"
     ec="${?}"
     return "${ec}"
@@ -93,7 +105,8 @@ elif [ "${task_type}" = "pre" ]; then
     return 0
   fi
 elif [ "${task_type}" = "post" ]; then
-  if [ -f "${post_spec}" ]; then
+  if [ -f "${task_dir}/${post_spec}" ]; then
+    cd "${task_dir}"
     rspec -f RspecJunitFormatter --out "${reports}/${task_name}/${post_xml}" "${post_spec}"
     ec="${?}"
     return "${ec}"

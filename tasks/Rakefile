@@ -1,31 +1,4 @@
-import 'components.rake'
-Rake::TaskManager.record_task_metadata = true
-
-def deploy(name, tasks)
-  desc "Preset deploymnet: #{name}"
-  task "preset/#{name}", :start_task do |t, args|
-    fail "No tasks in preset #{name}!" unless tasks.respond_to?(:each) && tasks.any?
-    start_task_number = tasks.index(args.start_task) if args.start_task
-    if start_task_number && start_task_number > 0
-      tasks = tasks.drop(start_task_number || 0)
-    end
-    tasks.each do |task|
-      Rake::Task[task].invoke
-    end
-  end
-  task "preset/#{name}/list" do
-    tasks.each_with_index do |task, num|
-      puts "#{num + 1} #{task}"
-    end
-  end
-end
-
-task :default do
-  tasks = Rake.application.tasks
-  tasks.each do |t|
-	puts "#{t.name} (#{t.comment})" if t.comment
-  end
-end
+require 'rake_tasks'
 
 #################################
 
@@ -35,6 +8,11 @@ empty_tasks = [
   'test:empty3',
 ]
 
+example_tasks = [
+  'example',
+]
+
 ################################
 
 deploy 'empty', empty_tasks
+deploy 'examples', example_tasks
