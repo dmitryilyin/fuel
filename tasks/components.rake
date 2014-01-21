@@ -1,56 +1,51 @@
 require 'find'
+Rake::TaskManager.record_task_metadata = true
 
-TESTS_DIR = File.dirname(File.expand_path(__FILE__))
-SPEC_DIR = File.expand_path(TESTS_DIR + '/spec')
-
-puppet_options = "--detailed-exitcodes"
-puppet_options += " --verbose --debug --trace --evaltrace" if ENV['puppet_debug']
-puppet_options += " --noop" if ENV['puppet_noop']
-
-PUPPET_OPTIONS = puppet_options
-RSPEC_OPTIONS = "--color -f doc"
-
-def puppet(manifest_file)
-  fail "No such manifest '#{Dir.pwd}/#{manifest_file}'!" unless File.exist?(manifest_file)
-  sh "puppet apply #{PUPPET_OPTIONS} '#{manifest_file}'" do |ok, res|
-    fail "Apply of manifest '#{manifest_file}' failed with exit code #{res.exitstatus}!" unless [0,2].include?(res.exitstatus)
-  end
-end
-
-def rspec(test_name)
-  rspec_file = "#{SPEC_DIR}/#{test_name}_spec.rb"
-  if File.exists?(rspec_file)
-    sh "rspec #{RSPEC_OPTIONS} '#{rspec_file}'" do |ok, res|
-      fail("Test #{test_name} failed with exit code #{res.exitstatus}!") unless ok
-    end
-  else
-    puts "Spec file for test '#{test_name}' doesn't exist! Skipping test phase."
-  end
-end
-
-Dir.chdir(TESTS_DIR) || exit(1)
+TASKS_DIR = File.dirname(File.expand_path(__FILE__))
+Dir.chdir(TASKS_DIR) || exit(1)
 
 Find.find('.') do |path|
   next unless File.file?(path)
-  next unless path.end_with?('.pp')
+  next unless path.end_with?('/run') or path.end_with?('/pre') or path.end_with?('/post')
   path.sub!('./','')
-  test_name = path.chomp('.pp')
-  namespace test_name do
-    task :run => [ :apply, :test ] do
-      puts "#{test_name} run ends"
+  task_name = File.dirname(path)
+  task_name.sub!('/',':')
+
+  if path.end_with?('/run')
+    namespace task_name do
+      task :run do
+        puts "Run task process #{task_name}"
+        system path
+      end
     end
-    task :apply do
-      puppet(path)
-      puts "#{test_name} have been applied!"
-    end
-    task :test do
-      rspec(test_name)
-      puts "#{test_name} have been tested!"
-    end
-    desc "#{test_name} deployment task"
   end
-  task test_name do
-    Rake::Task["#{test_name}:apply"].invoke
-    Rake::Task["#{test_name}:test"].invoke
+  
+  if path.end_with?('/pre')
+    namespace task_name do
+      task :pre do
+        puts "Run pre-deploy test #{task_name}"
+        system path
+      end
+    end
   end
+  
+  if path.end_with?('/post')
+    namespace task_name do
+      task :post do
+        puts "Run post-deploy test #{task_name}"
+        system path
+      end
+    end
+  end
+  
+  if path.end_with?('/run')
+    desc "#{task_name} task"
+    task task_name do
+      puts "Run full task #{task_name}"
+      Rake::Task["#{task_name}:pre"].invoke
+      Rake::Task["#{task_name}:run"].invoke
+      Rake::Task["#{task_name}:post"].invoke
+    end
+  end
+
 end

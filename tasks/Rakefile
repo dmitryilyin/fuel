@@ -1,64 +1,40 @@
 import 'components.rake'
+Rake::TaskManager.record_task_metadata = true
 
-def deploy(name, stages)
-  desc "Deploy #{name}"
-  task "deploy/#{name}", :start_stage do |t, args|
-    fail "No stages given for task #{t}!" unless stages.respond_to?(:each) && stages.any?
-    start_from = stages.index(args.start_stage) if args.start_stage
-    if start_from && start_from > 0
-      puts "Starting from stage #{args.start_stage}"
-      stages = stages.drop(start_from || 0)
+def deploy(name, tasks)
+  desc "Preset deploymnet: #{name}"
+  task "preset/#{name}", :start_task do |t, args|
+    fail "No tasks in preset #{name}!" unless tasks.respond_to?(:each) && tasks.any?
+    start_task_number = tasks.index(args.start_task) if args.start_task
+    if start_task_number && start_task_number > 0
+      tasks = tasks.drop(start_task_number || 0)
     end
-    stages.each do |stage|
-      Rake::Task["#{stage}:apply"].invoke
-      Rake::Task["#{stage}:test"].invoke
+    tasks.each do |task|
+      Rake::Task[task].invoke
     end
   end
-  task "deploy/#{name}/list" do
-    stages.each_with_index do |stage, num|
-      puts "#{num + 1} #{stage}"
+  task "preset/#{name}/list" do
+    tasks.each_with_index do |task, num|
+      puts "#{num + 1} #{task}"
     end
   end
 end
 
 task :default do
-  system("rake -sT")
+  tasks = Rake.application.tasks
+  tasks.each do |t|
+	puts "#{t.name} (#{t.comment})" if t.comment
+  end
 end
 
-################################
+#################################
 
-sanity_stages = [
-  'common/supported',
-  'common/role',
-]
-
-network_stages = [
-  'common/network',
-  'common/firewall',
-]
-  
-common_stages = sanity_stages + [
-  'common/repos',
-  'common/basic',
-  'common/profile',
-  'common/trace',
-]
-
-controller_stages = common_stages + network_stages + [
-  'controller/controller',
-  'controller/auth_file',
-  'controller/cirros',
-  'controller/rsyslog',
-  'controller/tinyproxy',
-  'controller/floating',
-]
-
-compute_stages = common_stages + [
-  'compute/compute',
-  'compute/rsyslog',
+empty_tasks = [
+  'test:empty1',
+  'test:empty2',
+  'test:empty3',
 ]
 
 ################################
 
-deploy :common, common_stages
-deploy :controller, controller_stages
+deploy 'empty', empty_tasks
