@@ -40,7 +40,7 @@ module Tasks
       text += "#{tc.attributes['name']} | #{success ? 'OK' : 'FAIL'} | #{message}\n"
     end
 
-    text += "-----------\n"
+    text += '-' * 20 + "\n"
     text += "Errors: #{errors}\n"
     return errors, text
   end
@@ -116,6 +116,13 @@ module Tasks
       errors
     end
 
+    def report_success(action = 'run')
+      file = report_file_path action
+      raise "No report file #{file}" unless File.exists? file
+      errors, report = Tasks.read_xunit file
+      errors == 0
+    end
+
     def report_raw(action = 'run')
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
@@ -152,27 +159,26 @@ module Tasks
 
     def pre
       action = 'pre'
-      spec_file = File.join directory, Tasks.config[:spec_pre]
+      spec_file = Tasks.config[:spec_pre]
+      Dir.chdir directory or raise "Could no change directory to #{directory}"
       unless File.exists? spec_file
         report = [ { :classname => 'Task::Test::Pre-deploy', :name => 'No Pre-deploy Test', } ]
         write_report make_xunit(report), action
         return 1
       end
-      Dir.chdir directory or raise "Could no change directory to #{directory}"
-      puts Dir.pwd
       system "rspec -f RspecJunitFormatter --out \"#{report_file_path action}\" \"#{spec_file}\""
       $CHILD_STATUS.exitstatus
     end
 
     def post
       action = 'post'
-      spec_file = File.join directory, Tasks.config[:spec_post]
+      spec_file = Tasks.config[:spec_post]
+      Dir.chdir directory or raise "Could no change directory to #{directory}"
       unless File.exists? spec_file
         report = [ { :classname => 'Task::Test::Post-deploy', :name => 'No Post-deploy Test', } ]
         write_report make_xunit(report), action
         return 1
       end
-      Dir.chdir directory or raise "Could no change directory to #{directory}"
       system "rspec -f RspecJunitFormatter --out \"#{report_file_path action}\" \"#{spec_file}\""
       $CHILD_STATUS.exitstatus
     end

@@ -1,48 +1,60 @@
 require 'find'
 require 'tasks'
-require 'parse_xunit'
 Rake::TaskManager.record_task_metadata = true
 
-TASKS_LOGS = '/var/log/tasks'
-TASKS_RUNS = '/var/run/tasks'
-TASKS_DIR = File.dirname(File.expand_path(__FILE__))
+Tasks.config[:report_dir]
 
 # create rake task and subtasks
-def make_task(task_name, path, task_type, xml_name)
-  namespace task_name do
-    task task_type do
-      puts "Run task: #{task_name} action: #{task_type}"
-      system path
+def make_task(file)
+  directory = File.dirname file
+  task = Tasks::Task.new directory
+  action = File.basename file
+  name = task.name
+  namespace name do
+    task action do
+      puts "Run task: #{name} action: #{action}"
+      system file
     end
-    task "#{task_type}/log" do
-      xml = File.join TASKS_LOGS, task_name, xml_name
-      if File.exists? xml
-        parse_xunit xml
-      else
-        puts 'There is no report file for this task!'
-        exit 1
-      end
+    task "#{action}/report" do
+      task.report_read action
     end
-    task "#{task_type}/xml" do
-      xml = File.join TASKS_LOGS, task_name, xml_name
-      if File.exists? xml
-        xml_content = File.read xml
-        puts xml_content
-      else
-        puts 'There is no report file for this task!'
-        exit 1
-      end
+    task "#{action}/raw" do
+      task.report_raw action
+    end
+    task "#{action}/remove" do
+      task.report_remove action
+    end
+    task "#{action}/success" do
+      task.report_success action
     end
   end
+
+  unless Rake.application.tasks.select { |t| t.name == name }.any?
+    desc "#{name} task"
+    task name do
+      puts "Run full task: #{name}"
+      Rake::Task["#{name}:pre"].invoke
+      unless task.report_success action
+        task.report_read action
+        puts 'Pre-deployment test failed!'
+        puts "Task #{name} deployment stopped!"
+        exit
+      end
+      Rake::Task["#{name}:run"].invoke
+      Rake::Task["#{name}:post"].invoke
+    end
+  end
+
 end
 
 # deploy preset of tasks
 # argument start_task can set fist task to do
 # /list can display tasks in preset
-def deploy(name, tasks)
+def deploy_preset(name, tasks)
   desc "Preset deploymnet: #{name}"
   task "preset/#{name}", :start_task do |t, args|
     fail "No tasks in preset #{name}!" unless tasks.respond_to?(:each) && tasks.any?
+    start_task_number = nil
     start_task_number = tasks.index(args.start_task) if args.start_task
     if start_task_number && start_task_number > 0
       tasks = tasks.drop(start_task_number || 0)
@@ -61,43 +73,27 @@ end
 ##############################################################
 
 # gather all tasks as rake jobs
-Dir.chdir(TASKS_DIR) || exit(1)
+Dir.chdir Tasks.config[:task_dir] or raise "Cannot change directory to #{Tasks.config[:task_dir]}"
+
 Find.find('.') do |path|
   next unless File.file?(path)
   next unless path.end_with?('/run') or path.end_with?('/pre') or path.end_with?('/post')
-
-  path.sub!('./','')
-  task_name = File.dirname(path)
-  task_name.sub!('/','::')
-
-  if path.end_with?('/run')
-    make_task task_name, path, 'run', 'run.xml'
-  end
-
-  if path.end_with?('/pre')
-    make_task task_name, path, 'pre', 'pre.xml'
-  end
-
-  if path.end_with?('/post')
-    make_task task_name, path, 'post', 'post.xml'
-  end
-
-  if Rake.application.tasks.select { |task| task.name == task_name }.empty?
-    desc "#{task_name} task"
-    task task_name do
-      puts "Run full task: #{task_name}"
-      Rake::Task["#{task_name}:pre"].invoke
-      Rake::Task["#{task_name}:run"].invoke
-      Rake::Task["#{task_name}:post"].invoke
-    end
-  end
-
+  make_task path
 end
 
 # show main tasks by default
 task :default do
   tasks = Rake.application.tasks
-  tasks.each do |t|
-    puts "#{t.name} (#{t.comment})" if t.comment
+  presents = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
+  main_tasks = tasks.select { |t| t.comment and not t.name.start_with? 'preset/' }
+
+  if presents.any?
+    presents.each { |t| puts "#{t.name} (#{t.comment})" }
+    puts '-' * 20 + "\n"
   end
+
+  main_tasks.each do |t|
+    puts "#{t.name} (#{t.comment})"
+  end
+
 end
