@@ -1,4 +1,4 @@
-require 'rake_tasks'
+require 'tasks'
 
 #################################
 
@@ -14,5 +14,9 @@ example_tasks = [
 
 ################################
 
-deploy 'empty', empty_tasks
-deploy 'examples', example_tasks
+#deploy 'empty', empty_tasks
+#deploy 'examples', example_tasks
+
+t = Tasks::Task.new 'tmp'
+require 'pry'
+binding.pry

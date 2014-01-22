@@ -1,4 +1,5 @@
 require 'find'
+require 'tasks'
 require 'parse_xunit'
 Rake::TaskManager.record_task_metadata = true
 
@@ -72,15 +73,15 @@ Find.find('.') do |path|
   if path.end_with?('/run')
     make_task task_name, path, 'run', 'run.xml'
   end
-  
+
   if path.end_with?('/pre')
     make_task task_name, path, 'pre', 'pre.xml'
   end
-  
+
   if path.end_with?('/post')
     make_task task_name, path, 'post', 'post.xml'
   end
-  
+
   if Rake.application.tasks.select { |task| task.name == task_name }.empty?
     desc "#{task_name} task"
     task task_name do
@@ -97,6 +98,6 @@ end
 task :default do
   tasks = Rake.application.tasks
   tasks.each do |t|
-	puts "#{t.name} (#{t.comment})" if t.comment
+    puts "#{t.name} (#{t.comment})" if t.comment
   end
 end
