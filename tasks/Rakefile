@@ -3,9 +3,9 @@ require 'rake_tasks'
 #################################
 
 empty_tasks = [
-  'test:empty1',
-  'test:empty2',
-  'test:empty3',
+  'test::empty1',
+  'test::empty2',
+  'test::empty3',
 ]
 
 example_tasks = [

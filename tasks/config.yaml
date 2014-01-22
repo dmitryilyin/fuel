@@ -1,0 +1,11 @@
+# global
+task_dir: '/etc/puppet/tasks'
+module_dir: '/etc/puppet/modules'
+report_format: 'xunit' #or json
+report_extension: 'xml'
+report_dir: '/var/log/tasks'
+pid_dir: '/var/run/tasks'
+# task
+puppet_manifest: 'site.pp'
+spec_pre: 'spec/pre_spec.rb'
+spec_post: 'spec/post_spec.rb'
