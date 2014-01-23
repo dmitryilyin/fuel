@@ -35,18 +35,15 @@ def make_task(file)
     task name do
       all_tasks = Rake.application.tasks.map { |t| t.name }
       puts "Run full task: #{name}"
-      # pre-deploy
-      Rake::Task["#{name}:pre"].invoke if all_tasks.include? "#{name}:pre"
-      if task.fail? action
-        task.report_read action
-        puts 'Pre-deployment test failed!'
-        puts "Task #{name} deployment stopped!"
-      else
-        # run
-        Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
-        # post-deploy
-        Rake::Task["#{name}:post"].invoke if all_tasks.include? "#{name}:post"
+      if all_tasks.include? "#{name}:pre"
+        Rake::Task["#{name}:pre"].invoke
+        if task.fail? 'pre'
+          task.report_read 'pre'
+          raise "Pre-deployment test of task \"#{name}\" failed!"
+        end
       end
+      Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
+      Rake::Task["#{name}:post"].invoke if all_tasks.include? "#{name}:post"
     end
   end
 
@@ -81,16 +78,17 @@ end
 Dir.chdir Tasks.config[:task_dir] or raise "Cannot change directory to #{Tasks.config[:task_dir]}"
 
 Find.find('.') do |path|
-  next unless File.file?(path)
-  next unless path.end_with?('/run') or path.end_with?('/pre') or path.end_with?('/post')
+  next unless File.file? path
+  next unless path.end_with? '/run' or path.end_with? '/pre' or path.end_with? '/post'
   make_task path
 end
 
-# print line of task list
+# print a line of the task list
 def print_task_line(task)
-  line = task.name.to_s.ljust 50
-  line += task.comment.to_s if  task.comment
-  puts line
+  line = ''
+  line += task.name.to_s.ljust 50 if task.name
+  line += task.comment.to_s if task.comment
+  puts line unless line.empty?
 end
 
 # show main tasks

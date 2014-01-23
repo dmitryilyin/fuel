@@ -13,8 +13,8 @@ example_tasks = [
 ]
 
 controller_tasks = [
-  'checks::os_support',
-  'checks::settings_present',
+  'checks::support',
+  'checks::settings',
 ]
 
 ################################
