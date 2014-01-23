@@ -2,6 +2,8 @@ require 'yaml'
 require 'English'
 
 module Tasks
+
+  # this module method loads task config file
   def self.parse_config(config_file = 'config.yaml')
     raise 'No config file name!' unless config_file
     @tasks_dir = File.expand_path File.dirname(__FILE__)
@@ -10,11 +12,13 @@ module Tasks
     raise 'Could not parse config file' unless @config
   end
 
+  # this method loads and returns task config with mnomoisation
   def self.config
     self.parse_config unless @config
     @config
   end
 
+  # this method parses xunit report to human readable form
   def self.read_xunit(file_name)
     require 'rubygems'
     require 'rexml/document'
@@ -45,6 +49,7 @@ module Tasks
     return errors, text
   end
 
+  # this class represents a single task
   class Task
     def initialize(directory)
       raise 'Task directory does not exist!' unless directory and File.directory? directory
@@ -53,6 +58,7 @@ module Tasks
       @directory = directory
     end
 
+    # name of this task
     def name
       return @name if @name
       task_path = directory.clone
@@ -62,12 +68,15 @@ module Tasks
       @name = task_path
     end
 
+    # path to this task's directory
     def directory
       @directory
     end
 
+    # generate xunit xml report
     def make_xunit(testcases)
-      raise 'No testcases! There should be at least one.' unless testcases.instance_of? Array and testcases.any?
+      testcases = [testcases] unless testcases.kind_of? Array
+      raise 'No testcases! There should be at least one.' unless testcases.any?
       tests = testcases.length
       failures = testcases.select { |tc| tc[:failure] }.length
       errors = 0
@@ -90,6 +99,7 @@ module Tasks
       xml += "</testsuite>\n"
     end
 
+    # get path to the report file of the given action
     def report_file_path(action = 'run')
       task_report_dir = File.join Tasks.config[:report_dir], name
       unless File.exists? task_report_dir
@@ -101,6 +111,7 @@ module Tasks
       File.join task_report_dir, action + extension
     end
 
+    # write report to file
     def write_report(report, action = 'run')
       file = File.open report_file_path(action), 'w'
       raise "Could not open report file #{file} for writing!" unless file
@@ -108,6 +119,7 @@ module Tasks
       file.close
     end
 
+    # read report from file and output in a human readable form
     def report_read(action = 'run')
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
@@ -116,13 +128,20 @@ module Tasks
       errors
     end
 
-    def report_success(action = 'run')
+    # was this task successful? based on report file
+    def success?(action = 'run')
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
       errors, report = Tasks.read_xunit file
       errors == 0
     end
 
+    # did this task fail?
+    def fail?(action = 'run')
+      !success? action
+    end
+
+    # read report from file and output it in a raw form
     def report_raw(action = 'run')
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
@@ -130,39 +149,61 @@ module Tasks
       puts report
     end
 
+    # remove the report file
     def report_remove(action = 'run')
       file = report_file_path action
       File.delete file if File.exists? file
     end
 
+    # run the task's Puppet payload
     def run
       puppet_manifest = File.join directory, Tasks.config[:puppet_manifest]
       unless File.exists? puppet_manifest
-        report = [ { :classname => 'Puppet::Apply', :name => 'Puppet Apply',
-          :failure => { :message => 'Manifest not found!', :text => "No Puppet manifest: #{puppet_manifest}" }
-        } ]
+        report = {
+          :classname => 'Puppet::Apply',
+          :name => 'Puppet Apply',
+          :failure => {
+            :message => 'Manifest not found!',
+            :text => "No Puppet manifest: #{puppet_manifest}"
+          }
+        }
         write_report make_xunit report
         return 1
       end
-      system "puppet apply --detailed-exitcodes -vd #{puppet_manifest}"
+      puppet_command = 'puppet apply --detailed-exitcodes'
+      puppet_command += " --modulepath=\"#{Tasks.config[:module_dir]}\"" if Tasks.config[:module_dir]
+      puppet_command += " #{Tasks.config[:puppet_options]}" if Tasks.config[:puppet_options]
+      system "#{puppet_command} #{puppet_manifest}"
       error_code = $CHILD_STATUS.exitstatus
       if [0,2].include? error_code
-        report = [ { :classname => 'Puppet::Apply', :name => 'Puppet Apply', } ]
+        report = {
+          :classname => 'Puppet::Apply',
+          :name => 'Puppet Apply',
+        }
       else
-        report = [ { :classname => 'Puppet::Apply', :name => 'Puppet Apply',
-          :failure => { :message => 'Puppet Error', :text => "Puppet manifest #{puppet_manifest} returned error code #{error_code}" }
-        } ]
+        report = {
+          :classname => 'Puppet::Apply',
+          :name => 'Puppet Apply',
+          :failure => {
+            :message => 'Puppet Error',
+            :text => "Puppet manifest #{puppet_manifest} returned error code #{error_code}"
+          }
+        }
       end
       write_report make_xunit report
       error_code
     end
 
+    # run pre-deploymnet serverspec test
     def pre
       action = 'pre'
       spec_file = Tasks.config[:spec_pre]
       Dir.chdir directory or raise "Could no change directory to #{directory}"
       unless File.exists? spec_file
-        report = [ { :classname => 'Task::Test::Pre-deploy', :name => 'No Pre-deploy Test', } ]
+        report = {
+          :classname => 'Task::Test::Pre-deploy',
+          :name => 'No Pre-deploy Test',
+        }
         write_report make_xunit(report), action
         return 1
       end
@@ -170,12 +211,16 @@ module Tasks
       $CHILD_STATUS.exitstatus
     end
 
+    # run post-deployment serverspec test
     def post
       action = 'post'
       spec_file = Tasks.config[:spec_post]
       Dir.chdir directory or raise "Could no change directory to #{directory}"
       unless File.exists? spec_file
-        report = [ { :classname => 'Task::Test::Post-deploy', :name => 'No Post-deploy Test', } ]
+        report = {
+          :classname => 'Task::Test::Post-deploy',
+          :name => 'No Post-deploy Test',
+        }
         write_report make_xunit(report), action
         return 1
       end

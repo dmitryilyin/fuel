@@ -12,7 +12,13 @@ example_tasks = [
   'example',
 ]
 
+controller_tasks = [
+  'checks::os_support',
+  'checks::settings_present',
+]
+
 ################################
 
 deploy_preset 'empty', empty_tasks
 deploy_preset 'examples', example_tasks
+deploy_preset 'controller', controller_tasks

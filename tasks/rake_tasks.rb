@@ -13,6 +13,7 @@ def make_task(file)
   namespace name do
     task action do
       puts "Run task: #{name} action: #{action}"
+      File.chmod 0755, file unless File.stat(file).executable?
       system file
     end
     task "#{action}/report" do
@@ -25,23 +26,27 @@ def make_task(file)
       task.report_remove action
     end
     task "#{action}/success" do
-      task.report_success action
+      task.success? action
     end
   end
 
   unless Rake.application.tasks.select { |t| t.name == name }.any?
     desc "#{name} task"
     task name do
+      all_tasks = Rake.application.tasks.map { |t| t.name }
       puts "Run full task: #{name}"
-      Rake::Task["#{name}:pre"].invoke
-      unless task.report_success action
+      # pre-deploy
+      Rake::Task["#{name}:pre"].invoke if all_tasks.include? "#{name}:pre"
+      if task.fail? action
         task.report_read action
         puts 'Pre-deployment test failed!'
         puts "Task #{name} deployment stopped!"
-        exit
+      else
+        # run
+        Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
+        # post-deploy
+        Rake::Task["#{name}:post"].invoke if all_tasks.include? "#{name}:post"
       end
-      Rake::Task["#{name}:run"].invoke
-      Rake::Task["#{name}:post"].invoke
     end
   end
 
@@ -81,19 +86,39 @@ Find.find('.') do |path|
   make_task path
 end
 
-# show main tasks by default
-task :default do
+# print line of task list
+def print_task_line(task)
+  line = task.name.to_s.ljust 50
+  line += task.comment.to_s if  task.comment
+  puts line
+end
+
+# show main tasks
+task 'list' do
   tasks = Rake.application.tasks
   presents = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| t.comment and not t.name.start_with? 'preset/' }
 
   if presents.any?
-    presents.each { |t| puts "#{t.name} (#{t.comment})" }
-    puts '-' * 20 + "\n"
+    presents.each { |t| print_task_line t }
+    puts '-' * 70
   end
-
-  main_tasks.each do |t|
-    puts "#{t.name} (#{t.comment})"
-  end
+  main_tasks.each { |t| print_task_line t }
 
 end
+
+# show main tasks by default
+task 'list/all' do
+  tasks = Rake.application.tasks
+  presents = tasks.select { |t| t.name.start_with? 'preset/' }
+  main_tasks = tasks.select { |t| !t.name.start_with? 'preset/' }
+
+  if presents.any?
+    presents.each { |t| print_task_line t }
+    puts '-' * 70
+  end
+  main_tasks.each { |t| print_task_line t }
+
+end
+
+task :default => [ :list ]
