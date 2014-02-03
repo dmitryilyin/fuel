@@ -2,26 +2,63 @@
 $LOAD_PATH.unshift '/etc/puppet/tasks'
 require 'tasks'
 
-action = File.basename $0
-directory = File.dirname $0
-
-def run_action(directory, action)
-  raise "Unknown action: #{action}" unless %w(pre run post).include? action
-  t = Tasks::Task.new directory
-  option = $ARGV[0]
+def run_action(action, directory, option)
+  raise "Unknown action: #{action}" unless %w(pre run post deploy).include? action
+  directory = File.dirname directory if directory.end_with? 'install.d'
+  task = Tasks::Task.new directory
 
   case option
   when 'report'
-    t.report_read action
+    task.report_read action
   when 'raw'
-    t.report_raw action
+    task.report_raw action
   when 'remove'
-    t.report_remove action
+    task.report_remove action
   when 'check'
-    exit t.success? action
+    exit task.success? action
   else
-    t.send action
+    task.send action
   end
+  exit
 end
 
-run_action directory, action
+def create_api_links
+  api_path = File.dirname $0
+  api_file = File.basename $0
+  directory = '.'
+  actions = %w(pre run post deploy)
+  actions.each do |a|
+    symlink = File.join directory, a
+    File.unlink symlink if File.exists? symlink
+    api = File.join api_path, api_file
+    File.symlink api, symlink unless File.exists? symlink
+    raise "#{a} is not a symlink!" unless File.symlink? symlink
+  end
+#  install_d = File.join directory, 'install.d'
+#  File.unlink install_d if File.exists? install_d and not File.directory? install_d
+#  Dir.mkdir install_d unless File.exists? install_d
+#  raise 'No install.d dir!' unless File.directory? install_d
+#  deploy_file = File.join directory, 'install.d', 'deploy'
+#  File.unlink deploy_file if File.exists? deploy_file
+#  deploy_content = <<END
+##!/bin/sh
+#file=$0
+#dir=`dirname ${file}`
+#cd "${dir}" || exit 1
+#cd ..
+#./deploy
+#END
+#  File.open(deploy_file, 'w') { |file| file.write deploy_content } unless File.exists? deploy_file
+#  File.chmod 0755, deploy_file
+#  raise "#{deploy_file} was not created!" unless File.exists? deploy_file
+  exit
+end
+
+###########################################################
+
+option = $ARGV[0]
+create_api_links if option == 'links'
+
+action = File.basename $0
+directory = File.dirname $0
+run_action action, directory, option

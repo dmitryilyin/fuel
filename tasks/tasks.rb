@@ -228,6 +228,18 @@ module Tasks
       $CHILD_STATUS.exitstatus
     end
 
+    # run pre, run and post to deploy this task
+    # mostly to provide compatibility with simple orchestrators
+    def deploy
+      pre
+      report_read 'pre'
+      raise 'Pre-deploy test failed!' unless success? 'pre'
+      run
+      post
+      report_read 'post'
+      raise 'Post-deploy test failed!' unless success? 'post'
+    end
+
   end
 
 end

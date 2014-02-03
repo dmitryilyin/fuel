@@ -37,13 +37,14 @@ def make_task(file)
       puts "Run full task: #{name}"
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
-        if task.fail? 'pre'
-          task.report_read 'pre'
-          raise "Pre-deployment test of task \"#{name}\" failed!"
-        end
+        raise "Pre-deployment test of task \"#{name}\" failed!" if task.fail? 'pre'
+        task.report_read 'pre'
       end
       Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
-      Rake::Task["#{name}:post"].invoke if all_tasks.include? "#{name}:post"
+      if all_tasks.include? "#{name}:post"
+        Rake::Task["#{name}:post"].invoke
+        task.report_read 'post'
+      end
     end
   end
 
@@ -87,7 +88,7 @@ end
 def print_task_line(task)
   line = ''
   line += task.name.to_s.ljust 50 if task.name
-  line += task.comment.to_s if task.comment
+  #line += task.comment.to_s if task.comment
   puts line unless line.empty?
 end
 
@@ -99,7 +100,7 @@ task 'list' do
 
   if presents.any?
     presents.each { |t| print_task_line t }
-    puts '-' * 70
+    puts '-' * 40
   end
   main_tasks.each { |t| print_task_line t }
 
@@ -113,7 +114,7 @@ task 'list/all' do
 
   if presents.any?
     presents.each { |t| print_task_line t }
-    puts '-' * 70
+    puts '-' * 40
   end
   main_tasks.each { |t| print_task_line t }
 

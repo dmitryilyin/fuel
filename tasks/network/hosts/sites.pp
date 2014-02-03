@@ -1,0 +1,1 @@
+class {"l23network::hosts_file": stage => 'netconfig', nodes => $nodes_hash }

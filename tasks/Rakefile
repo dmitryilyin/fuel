@@ -17,8 +17,15 @@ controller_tasks = [
   'checks::settings',
 ]
 
+demo_tasks = [
+  'demo::apache::install',
+  'demo::apache::start',
+  'demo::hello_world_page',
+]
+
 ################################
 
 deploy_preset 'empty', empty_tasks
 deploy_preset 'examples', example_tasks
 deploy_preset 'controller', controller_tasks
+deploy_preset 'demo', demo_tasks
