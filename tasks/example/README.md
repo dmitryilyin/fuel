@@ -1,4 +1,6 @@
-Example task
-============
+Simple example task
+===================
 
-The empty example task
+The simple example task.
+Creates a file in /tmp folder
+and contains tests.
