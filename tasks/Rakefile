@@ -15,6 +15,13 @@ example_tasks = [
 controller_tasks = [
   'checks::support',
   'checks::settings',
+  'network::nova',
+  'network::hosts',
+  'mysql::simple',
+  'keystone::mysql_user',
+  'keystone::install',
+  'keystone::admin_role',
+  'keystone::endpoint',
 ]
 
 demo_tasks = [

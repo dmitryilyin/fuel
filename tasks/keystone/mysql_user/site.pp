@@ -9,5 +9,15 @@ class { 'keystone::db::mysql':
   user          => $db_user,
   password      => $db_password,
   dbname        => $db_name,
-  allowed_hosts => ['127.0.0.1', '%'],
+  allowed_hosts => ['localhost', '%'],
+  charset       => 'utf8',
+}
+
+$use_syslog = true
+
+class { 'mysql::server' :
+  config_hash => {
+  'bind_address'  => '0.0.0.0',
+  },
+  use_syslog => $use_syslog,
 }

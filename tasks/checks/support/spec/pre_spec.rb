@@ -4,7 +4,7 @@ require 'facter'
 
 describe 'server' do
   let(:supported_osfamily) { %w(Debian RedHat) }
-  let(:supported_architecture) { %w(amd64) }
+  let(:supported_architecture) { %w(amd64 x86_64) }
 
   let(:osfamily) { Facter.value :osfamily }
   let(:architecture) { Facter.value :architecture }
