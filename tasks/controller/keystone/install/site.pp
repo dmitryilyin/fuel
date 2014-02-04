@@ -21,6 +21,11 @@ $admin_tenant   = $access_hash['tenant']
 
 $sql_conn = "mysql://${db_user}:${db_password}@${db_host}/${db_name}"
 
+$nodes_hash  = $fuel_settings['nodes']
+$controller  = filter_nodes($nodes_hash,'role','controller')
+$controller_node_address = $controller[0]['internal_address']
+$controller_node_public  = $controller[0]['public_address']
+
 class { 'keystone' :
   verbose        => $verbose,
   debug          => $debug,
@@ -37,7 +42,7 @@ class { 'keystone::roles::admin' :
 }
 
 class { 'keystone::endpoint' :
-  public_address   => $public_address,
-  admin_address    => $admin_real,
-  internal_address => $internal_real,
+  public_address   => $controller_node_public,
+  admin_address    => $controller_node_address,
+  internal_address => $controller_node_address,
 }

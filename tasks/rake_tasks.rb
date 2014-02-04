@@ -7,9 +7,9 @@ Tasks.config[:report_dir]
 # create rake task and subtasks
 def make_task(file)
   directory = File.dirname file
-  task = Tasks::Task.new directory
+  new_task = Tasks::Task.new directory
   action = File.basename file
-  name = task.name
+  name = new_task.name
   namespace name do
     task action do
       puts "Run task: #{name} action: #{action}"
@@ -17,34 +17,41 @@ def make_task(file)
       system file
     end
     task "#{action}/report" do
-      task.report_read action
+      new_task.report_read action
     end
     task "#{action}/raw" do
-      task.report_raw action
+      new_task.report_raw action
     end
     task "#{action}/remove" do
-      task.report_remove action
+      new_task.report_remove action
     end
     task "#{action}/success" do
-      task.success? action
+      new_task.success? action
     end
   end
 
   unless Rake.application.tasks.select { |t| t.name == name }.any?
-    desc "#{name} task"
+    if new_task.title
+      desc new_task.title
+    else
+      desc "#{name} task"
+    end
     task name do
       all_tasks = Rake.application.tasks.map { |t| t.name }
       puts "Run full task: #{name}"
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
-        raise "Pre-deployment test of task \"#{name}\" failed!" if task.fail? 'pre'
-        task.report_read 'pre'
+        raise "Pre-deployment test of task \"#{name}\" failed!" if new_task.fail? 'pre'
+        new_task.report_read 'pre'
       end
       Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
       if all_tasks.include? "#{name}:post"
         Rake::Task["#{name}:post"].invoke
-        task.report_read 'post'
+        new_task.report_read 'post'
       end
+    end
+    task "#{name}/info" do
+      puts new_task.readme
     end
   end
 
@@ -53,8 +60,8 @@ end
 # deploy preset of tasks
 # argument start_task can set fist task to do
 # /list can display tasks in preset
-def deploy_preset(name, tasks)
-  desc "Preset deploymnet: #{name}"
+def deploy_preset(name, tasks, comment = nil)
+  desc comment ? comment : "Preset deploymnet: #{name}"
   task "preset/#{name}", :start_task do |t, args|
     fail "No tasks in preset #{name}!" unless tasks.respond_to?(:each) && tasks.any?
     start_task_number = nil
@@ -84,40 +91,44 @@ Find.find('.') do |path|
   make_task path
 end
 
+
 # print a line of the task list
-def print_task_line(task)
+def print_task_line(task, name_length)
   line = ''
-  line += task.name.to_s.ljust 50 if task.name
-  #line += task.comment.to_s if task.comment
+  line += task.name.to_s.ljust name_length if task.name
+  line += task.comment.to_s if task.comment
   puts line unless line.empty?
+end
+
+# print the entire list of tasks
+def print_tasks_list(tasks)
+  raise 'Tasks list should be Array!' unless tasks.is_a? Array
+  return nil unless tasks.any?
+  max_length = tasks.inject 0 do |ml, t|
+    len = t.name.length
+    ml = len > ml ? len : ml
+  end
+  tasks.each { |t| print_task_line t, max_length + 1 }
 end
 
 # show main tasks
 task 'list' do
   tasks = Rake.application.tasks
-  presents = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
+  presets = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| t.comment and not t.name.start_with? 'preset/' }
-
-  if presents.any?
-    presents.each { |t| print_task_line t }
-    puts '-' * 40
-  end
-  main_tasks.each { |t| print_task_line t }
-
+  print_tasks_list presets
+  puts
+  print_tasks_list main_tasks
 end
 
 # show main tasks by default
 task 'list/all' do
   tasks = Rake.application.tasks
-  presents = tasks.select { |t| t.name.start_with? 'preset/' }
+  presets = tasks.select { |t| t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| !t.name.start_with? 'preset/' }
-
-  if presents.any?
-    presents.each { |t| print_task_line t }
-    puts '-' * 40
-  end
-  main_tasks.each { |t| print_task_line t }
-
+  print_tasks_list presets
+  puts
+  print_tasks_list main_tasks
 end
 
 task :default => [ :list ]

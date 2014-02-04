@@ -55,6 +55,7 @@ module Tasks
       raise 'Task directory does not exist!' unless directory and File.directory? directory
       raise 'Base directory of tasks is not set!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
       raise 'Report directory is not set!' unless Tasks.config[:report_dir]
+      @readme_file = File.join directory, Tasks.config[:readme_file] || 'README.md'
       @directory = directory
     end
 
@@ -71,6 +72,31 @@ module Tasks
     # path to this task's directory
     def directory
       @directory
+    end
+
+    def readme
+      return nil unless File.exists? @readme_file
+      begin
+        file = File.open @readme_file, 'r'
+        readme = file.read
+        file.close
+      rescue
+        return nil
+      end
+      readme
+    end
+
+    def title
+      return @title if @title
+      return nil unless File.exists? @readme_file
+      begin
+        file = File.open @readme_file, 'r'
+        title = file.readline.chomp
+        file.close
+      rescue
+        return nil
+      end
+      @title = title
     end
 
     # generate xunit xml report

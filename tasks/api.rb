@@ -57,7 +57,7 @@ end
 ###########################################################
 
 option = $ARGV[0]
-create_api_links if option == 'links'
+create_api_links if %w(links init).include? option
 
 action = File.basename $0
 directory = File.dirname $0
