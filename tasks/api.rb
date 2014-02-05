@@ -4,7 +4,6 @@ require 'tasks'
 
 def run_action(action, directory, option)
   raise "Unknown action: #{action}" unless %w(pre run post deploy).include? action
-  directory = File.dirname directory if directory.end_with? 'install.d'
   task = Tasks::Task.new directory
 
   case option
@@ -22,43 +21,43 @@ def run_action(action, directory, option)
   exit
 end
 
-def create_api_links
-  api_path = File.dirname $0
-  api_file = File.basename $0
-  directory = '.'
+def create_api_links(api = nil, task_dir = nil)
+  api = File.join Tasks.config[:task_dir], 'api.rb' unless api
+  task_dir = '.' unless task_dir
   actions = %w(pre run post deploy)
   actions.each do |a|
-    symlink = File.join directory, a
-    File.unlink symlink if File.exists? symlink
-    api = File.join api_path, api_file
+    symlink = File.join task_dir, a
+    puts "#{api} => #{symlink}"
+    File.unlink symlink if File.exists? symlink or File.symlink? symlink
     File.symlink api, symlink unless File.exists? symlink
-    raise "#{a} is not a symlink!" unless File.symlink? symlink
+    raise "#{symlink} is not a symlink!" unless File.symlink? symlink
   end
-#  install_d = File.join directory, 'install.d'
-#  File.unlink install_d if File.exists? install_d and not File.directory? install_d
-#  Dir.mkdir install_d unless File.exists? install_d
-#  raise 'No install.d dir!' unless File.directory? install_d
-#  deploy_file = File.join directory, 'install.d', 'deploy'
-#  File.unlink deploy_file if File.exists? deploy_file
-#  deploy_content = <<END
-##!/bin/sh
-#file=$0
-#dir=`dirname ${file}`
-#cd "${dir}" || exit 1
-#cd ..
-#./deploy
-#END
-#  File.open(deploy_file, 'w') { |file| file.write deploy_content } unless File.exists? deploy_file
-#  File.chmod 0755, deploy_file
-#  raise "#{deploy_file} was not created!" unless File.exists? deploy_file
-  exit
+end
+
+def create_links_for_puppet_tasks
+  require 'find'
+  raise 'No task dir!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
+  Find.find(Tasks.config[:task_dir] + '/') do |path|
+    next unless path.end_with? Tasks.config[:task_file]
+    task_dir = File.dirname path
+    manifest = File.join task_dir, Tasks.config[:puppet_manifest]
+    next unless File.exists? manifest
+    api = File.join Tasks.config[:task_dir], 'api.rb' unless api
+    create_api_links api, task_dir
+  end
 end
 
 ###########################################################
 
 option = $ARGV[0]
-create_api_links if %w(links init).include? option
 
-action = File.basename $0
-directory = File.dirname $0
-run_action action, directory, option
+case option
+  when 'links' then create_api_links
+  when 'init' then create_api_links
+  when 'autolinks' then create_links_for_puppet_tasks
+  else begin
+    action = File.basename $0
+    directory = File.dirname $0
+    run_action action, directory, option
+  end
+end

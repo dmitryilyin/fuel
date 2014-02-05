@@ -1,0 +1,1 @@
+class {'cinder::volume::ceph': }

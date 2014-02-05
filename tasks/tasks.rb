@@ -3,6 +3,31 @@ require 'English'
 
 module Tasks
 
+  def self.config_defaults(defaults_hash)
+    raise 'Defaults is not a Hash!' unless defaults_hash.is_a? Hash
+    defaults_hash.each do |k, v|
+      k = k.to_sym
+      @config[k] = v unless @config[k]
+    end
+  end
+
+  def self.set_config_defaults
+    defaults_hash = {
+      :task_dir => '/etc/puppet/tasks',
+      :module_dir => '/etc/puppet/modules',
+      :puppet_options => '',
+      :report_format => 'xunit',
+      :report_extension => '',
+      :report_dir => '/var/log/tasks',
+      :pid_dir => '/var/run/tasks',
+      :puppet_manifest => 'site.pp',
+      :spec_pre => 'spec/pre_spec.rb',
+      :spec_post => 'spec/post_spec.rb',
+      :task_file => 'task.md',
+    }
+    config_defaults defaults_hash
+  end
+
   # this module method loads task config file
   def self.parse_config(config_file = 'config.yaml')
     raise 'No config file name!' unless config_file
@@ -10,6 +35,7 @@ module Tasks
     config_path = File.join @tasks_dir, config_file
     @config = YAML.load_file(config_path)
     raise 'Could not parse config file' unless @config
+    self.set_config_defaults
   end
 
   # this method loads and returns task config with mnomoisation
@@ -55,7 +81,7 @@ module Tasks
       raise 'Task directory does not exist!' unless directory and File.directory? directory
       raise 'Base directory of tasks is not set!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
       raise 'Report directory is not set!' unless Tasks.config[:report_dir]
-      @readme_file = File.join directory, Tasks.config[:readme_file] || 'README.md'
+      @readme_file = File.join directory, Tasks.config[:task_file]
       @directory = directory
     end
 
@@ -133,8 +159,7 @@ module Tasks
         FileUtils.mkdir_p task_report_dir
       end
       raise "No directory #{task_report_dir} for report!" unless File.directory? task_report_dir
-      extension = Tasks.config[:report_extension] ? ".#{Tasks.config[:report_extension]}" : ''
-      File.join task_report_dir, action + extension
+      File.join task_report_dir, action + Tasks.config[:report_extension]
     end
 
     # write report to file

@@ -18,7 +18,7 @@ controller_tasks = [
   'network::nova',
   'network::hosts',
   'mysql::simple',
-  'keystone::mysql_user',
+  'keystone::db::mysql',
   'keystone::install',
   'keystone::admin_role',
   'keystone::endpoint',

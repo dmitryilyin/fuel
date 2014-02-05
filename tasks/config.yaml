@@ -10,3 +10,4 @@
 :puppet_manifest: 'site.pp'
 :spec_pre: 'spec/pre_spec.rb'
 :spec_post: 'spec/post_spec.rb'
+:task_file: 'task.md'

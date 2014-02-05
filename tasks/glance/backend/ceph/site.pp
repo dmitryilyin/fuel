@@ -1,0 +1,1 @@
+class { 'glance::backend::ceph' : }
