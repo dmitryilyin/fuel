@@ -15,6 +15,7 @@ def make_task(file)
       puts "Run task: #{name} action: #{action}"
       File.chmod 0755, file unless File.stat(file).executable?
       system file
+      new_task.report_read action
     end
     task "#{action}/report" do
       new_task.report_read action
@@ -42,12 +43,12 @@ def make_task(file)
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
         raise "Pre-deployment test of task \"#{name}\" failed!" if new_task.fail? 'pre'
-        new_task.report_read 'pre'
       end
-      Rake::Task["#{name}:run"].invoke if all_tasks.include? "#{name}:run"
+      if all_tasks.include? "#{name}:run"
+        Rake::Task["#{name}:run"].invoke
+      end
       if all_tasks.include? "#{name}:post"
         Rake::Task["#{name}:post"].invoke
-        new_task.report_read 'post'
       end
     end
     task "#{name}/info" do

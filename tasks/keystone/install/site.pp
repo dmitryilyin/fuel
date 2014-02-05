@@ -1,4 +1,4 @@
-$fuel_settings = parseyaml($astute_settings_yaml)
+$fuel_settings = parseyaml($::astute_settings_yaml)
 
 $verbose = true
 $debug   = $fuel_settings['debug']

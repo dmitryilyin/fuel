@@ -1,10 +1,11 @@
-$fuel_settings = parseyaml($astute_settings_yaml)
+$fuel_settings = parseyaml($::astute_settings_yaml)
+
 $rabbit_hash   = $fuel_settings['rabbit']
 $keystone_hash = $fuel_settings['keystone']
 $nodes_hash    = $fuel_settings['nodes']
 $nova_hash     = $fuel_settings['nova']
 
-$controller  = filter_nodes($nodes_hash,'role','controller')
+$controller = filter_nodes($nodes_hash,'role','controller')
 $controller_node_address = $controller[0]['internal_address']
 $controller_node_public  = $controller[0]['public_address']
 
@@ -20,7 +21,7 @@ $db_password = $keystone_hash['db_password']
 $db_name     = 'keystone'
 $db_host     = '127.0.0.1'
 
-$nova_db = "mysql://${db_user}:${db_password}@${db_host}/${db_dbname}"
+$nova_db = "mysql://${db_user}:${db_password}@${db_host}/${db_name}"
 
 $glance_connection = "${$controller_node_public}:9292"
 $rabbit_connection = $controller_node_address

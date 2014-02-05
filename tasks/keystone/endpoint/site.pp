@@ -1,4 +1,4 @@
-$fuel_settings = parseyaml($astute_settings_yaml)
+$fuel_settings = parseyaml($::astute_settings_yaml)
 
 $nodes_hash  = $fuel_settings['nodes']
 $controller  = filter_nodes($nodes_hash,'role','controller')
