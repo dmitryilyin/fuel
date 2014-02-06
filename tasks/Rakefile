@@ -25,6 +25,7 @@ controller_tasks = [
   'nova::vncproxy',
   'memcached',
   'horizon',
+  'openstack::auth_file',
 ]
 
 demo_tasks = [

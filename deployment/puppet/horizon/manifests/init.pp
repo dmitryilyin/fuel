@@ -244,6 +244,8 @@ class horizon(
   Package[$::horizon::params::http_service, $::horizon::params::http_modwsgi] -> Service['httpd']
 
   if $cache_server_ip =~ /^127\.0\.0\.1/ {
-    Class['memcached'] -> Class['horizon']
+    if defined(Class['memcached']) {
+      Class['memcached'] -> Class['horizon']
+    }
   }
 }
