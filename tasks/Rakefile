@@ -2,16 +2,6 @@ require 'rake_tasks'
 
 #################################
 
-empty_tasks = [
-  'test::empty1',
-  'test::empty2',
-  'test::empty3',
-]
-
-example_tasks = [
-  'example',
-]
-
 controller_tasks = [
   'checks::support',
   'checks::settings',
@@ -22,6 +12,19 @@ controller_tasks = [
   'keystone::install',
   'keystone::admin_role',
   'keystone::endpoint',
+  'rabbitmq::install',
+  'rabbitmq::users',
+  'nova::db::mysql',
+  'nova::common',
+  'nova::api',
+  'nova::cert',
+  'nova::conductor',
+  'nova::consoleauth',
+  'nova::objectstore',
+  'nova::scheduler',
+  'nova::vncproxy',
+  'memcached',
+  'horizon',
 ]
 
 demo_tasks = [
@@ -32,7 +35,5 @@ demo_tasks = [
 
 ################################
 
-deploy_preset 'empty', empty_tasks, 'Just several empty tasks'
-deploy_preset 'examples', example_tasks, 'A single example task'
 deploy_preset 'controller', controller_tasks, 'Deployment of the Simple Controller'
 deploy_preset 'demo', demo_tasks, 'A set of demo tasks that deploy apache'

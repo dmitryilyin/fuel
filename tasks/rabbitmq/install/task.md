@@ -1,0 +1,1 @@
+Install the RabbitMQ server

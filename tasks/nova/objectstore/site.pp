@@ -1,1 +1,3 @@
-class { 'nova::objectstore' :}
+class { 'nova::objectstore' :
+  enabled => true,
+}

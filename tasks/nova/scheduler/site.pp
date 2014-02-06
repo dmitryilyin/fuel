@@ -1,1 +1,3 @@
-class { 'nova::scheduler' :}
+class { 'nova::scheduler' :
+  enabled => true,
+}

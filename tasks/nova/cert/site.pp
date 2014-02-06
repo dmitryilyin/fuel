@@ -1,1 +1,3 @@
-class { 'nova::cert' :}
+class { 'nova::cert' :
+  enabled => true,
+}

@@ -1,7 +1,6 @@
 $fuel_settings = parseyaml($::astute_settings_yaml)
 
 $rabbit_hash   = $fuel_settings['rabbit']
-$keystone_hash = $fuel_settings['keystone']
 $nodes_hash    = $fuel_settings['nodes']
 $nova_hash     = $fuel_settings['nova']
 
@@ -12,9 +11,9 @@ $controller_node_public  = $controller[0]['public_address']
 $rabbit_userid   = 'nova'
 $rabbit_password = $rabbit_hash['password']
 
-$db_userid   = 'keystone'
-$db_password = $keystone_hash['db_password']
-$db_name     = 'keystone'
+$db_user     = 'nova'
+$db_password = $nova_hash['db_password']
+$db_name     = 'nova'
 $db_host     = '127.0.0.1'
 
 $nova_db = "mysql://${db_user}:${db_password}@${db_host}/${db_name}"
@@ -35,6 +34,18 @@ class { 'nova':
   debug              => $debug,
   rabbit_host        => $rabbit_connection,
   use_syslog         => false,
+}
+
+class { 'nova::quota' :
+  quota_instances                       => 100,
+  quota_cores                           => 100,
+  quota_volumes                         => 100,
+  quota_gigabytes                       => 1000,
+  quota_floating_ips                    => 100,
+  quota_metadata_items                  => 1024,
+  quota_max_injected_files              => 50,
+  quota_max_injected_file_content_bytes => 102400,
+  quota_max_injected_file_path_bytes    => 4096
 }
 
 $auto_assign_floating_ip = $fuel_settings['auto_assign_floating_ip']

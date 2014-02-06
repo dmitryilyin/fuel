@@ -1,4 +1,4 @@
-$fuel_settings = parseyaml($astute_settings_yaml)
+$fuel_settings = parseyaml($::astute_settings_yaml)
 $rabbit_hash = $fuel_settings['rabbit']
 
 if !$rabbit_hash['user'] {

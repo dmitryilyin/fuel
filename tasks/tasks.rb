@@ -13,17 +13,18 @@ module Tasks
 
   def self.set_config_defaults
     defaults_hash = {
-      :task_dir => '/etc/puppet/tasks',
-      :module_dir => '/etc/puppet/modules',
-      :puppet_options => '',
-      :report_format => 'xunit',
+      :task_dir         => '/etc/puppet/tasks',
+      :module_dir       => '/etc/puppet/modules',
+      :puppet_options   => '',
+      :report_format    => 'xunit',
       :report_extension => '',
-      :report_dir => '/var/log/tasks',
-      :pid_dir => '/var/run/tasks',
-      :puppet_manifest => 'site.pp',
-      :spec_pre => 'spec/pre_spec.rb',
-      :spec_post => 'spec/post_spec.rb',
-      :task_file => 'task.md',
+      :report_dir       => '/var/log/tasks',
+      :pid_dir          => '/var/run/tasks',
+      :puppet_manifest  => 'site.pp',
+      :spec_pre         => 'spec/pre_spec.rb',
+      :spec_post        => 'spec/post_spec.rb',
+      :task_file        => 'task.md',
+      :api_file         => 'api.rb',
     }
     config_defaults defaults_hash
   end
@@ -74,6 +75,82 @@ module Tasks
     text += "Errors: #{errors}\n"
     return errors, text
   end
+
+  def self.run_action(action, directory, option)
+    raise "Unknown action: #{action}" unless %w(pre run post deploy).include? action
+    task = Tasks::Task.new directory
+
+    case option
+      when 'report'
+        task.report_read action
+      when 'raw'
+        task.report_raw action
+      when 'remove'
+        task.report_remove action
+      when 'check'
+        exit task.success? action
+      else
+        task.send action
+    end
+    exit
+  end
+
+  def self.create_api_links(task_dir = nil, api = nil, actions = %w(pre run post))
+    api = File.join Tasks.config[:task_dir], Tasks.config[:api_file] unless api
+    task_dir = '.' unless task_dir
+    actions.each do |a|
+      symlink = File.join task_dir, a
+      puts "#{api} => #{symlink}"
+      File.unlink symlink if File.exists? symlink or File.symlink? symlink
+      File.symlink api, symlink unless File.exists? symlink
+      raise "#{symlink} is not a symlink!" unless File.symlink? symlink
+    end
+  end
+
+  def self.create_all_task_links (task_file_check = true, puppet_manifest_check = true)
+    require 'find'
+    raise 'No task dir!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
+    Find.find(Tasks.config[:task_dir] + '/') do |path|
+      next unless path.end_with? Tasks.config[:task_file] or !task_file_check
+      task_dir = File.dirname path
+      manifest = File.join task_dir, Tasks.config[:puppet_manifest]
+      next unless File.exists? manifest or !puppet_manifest_check
+      self.create_api_links task_dir
+    end
+  end
+
+  # removes all links to taks api in entire task_dir
+  def self.remove_all_task_links
+    require 'find'
+    raise 'No task dir!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
+    Find.find(Tasks.config[:task_dir] + '/') do |path|
+      actions = %w(pre run post deploy)
+      next unless actions.select { |a| path.end_with?('/' + a) }.any? and File.symlink? path
+      puts "X-> #{path}"
+      File.unlink path
+    end
+  end
+
+  # print a line of the task list
+  def self.print_task_line(task, name_length)
+    line = ''
+    line += task.name.to_s.ljust name_length if task.name
+    line += task.comment.to_s if task.comment
+    puts line unless line.empty?
+  end
+
+# print the entire list of tasks
+  def self.print_tasks_list(tasks)
+    raise 'Tasks list should be Array!' unless tasks.is_a? Array
+    return nil unless tasks.any?
+    max_length = tasks.inject 0 do |ml, t|
+      len = t.name.length
+      ml = len > ml ? len : ml
+    end
+    tasks.each { |t| self.print_task_line t, max_length + 1 }
+  end
+
+  #####################################
 
   # this class represents a single task
   class Task
@@ -281,15 +358,15 @@ module Tasks
 
     # run pre, run and post to deploy this task
     # mostly to provide compatibility with simple orchestrators
-    def deploy
-      pre
-      report_read 'pre'
-      raise 'Pre-deploy test failed!' unless success? 'pre'
-      run
-      post
-      report_read 'post'
-      raise 'Post-deploy test failed!' unless success? 'post'
-    end
+    #def deploy
+    #  pre
+    #  report_read 'pre'
+    #  raise 'Pre-deploy test failed!' unless success? 'pre'
+    #  run
+    #  post
+    #  report_read 'post'
+    #  raise 'Post-deploy test failed!' unless success? 'post'
+    #end
 
   end
 

@@ -1,8 +1,7 @@
 require 'find'
 require 'tasks'
 Rake::TaskManager.record_task_metadata = true
-
-Tasks.config[:report_dir]
+ENV['LANG'] = 'C'
 
 # create rake task and subtasks
 def make_task(file)
@@ -49,6 +48,7 @@ def make_task(file)
       end
       if all_tasks.include? "#{name}:post"
         Rake::Task["#{name}:post"].invoke
+        raise "Post-deployment test of task \"#{name}\" failed!" if new_task.fail? 'post'
       end
     end
     task "#{name}/info" do
@@ -87,29 +87,10 @@ end
 Dir.chdir Tasks.config[:task_dir] or raise "Cannot change directory to #{Tasks.config[:task_dir]}"
 
 Find.find('.') do |path|
+  actions = %w(pre run post)
   next unless File.file? path
-  next unless path.end_with? '/run' or path.end_with? '/pre' or path.end_with? '/post'
+  next unless actions.select { |a| path.end_with?('/' + a)}.any?
   make_task path
-end
-
-
-# print a line of the task list
-def print_task_line(task, name_length)
-  line = ''
-  line += task.name.to_s.ljust name_length if task.name
-  line += task.comment.to_s if task.comment
-  puts line unless line.empty?
-end
-
-# print the entire list of tasks
-def print_tasks_list(tasks)
-  raise 'Tasks list should be Array!' unless tasks.is_a? Array
-  return nil unless tasks.any?
-  max_length = tasks.inject 0 do |ml, t|
-    len = t.name.length
-    ml = len > ml ? len : ml
-  end
-  tasks.each { |t| print_task_line t, max_length + 1 }
 end
 
 # show main tasks
@@ -117,9 +98,9 @@ task 'list' do
   tasks = Rake.application.tasks
   presets = tasks.select { |t| t.comment and t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| t.comment and not t.name.start_with? 'preset/' }
-  print_tasks_list presets
+  Tasks.print_tasks_list presets
   puts
-  print_tasks_list main_tasks
+  Tasks.print_tasks_list main_tasks
 end
 
 # show main tasks by default
@@ -127,9 +108,9 @@ task 'list/all' do
   tasks = Rake.application.tasks
   presets = tasks.select { |t| t.name.start_with? 'preset/' }
   main_tasks = tasks.select { |t| !t.name.start_with? 'preset/' }
-  print_tasks_list presets
+  Tasks.print_tasks_list presets
   puts
-  print_tasks_list main_tasks
+  Tasks.print_tasks_list main_tasks
 end
 
 task :default => [ :list ]
