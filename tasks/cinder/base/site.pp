@@ -4,6 +4,7 @@ $nodes_hash    = $fuel_settings['nodes']
 $cinder_hash   = $fuel_settings['cinder']
 
 $rabbit_password = $rabbit_hash['password']
+$qpid_password   = $rabbit_hash['password']
 
 $controller = filter_nodes($nodes_hash,'role','controller')
 $controller_node_address = $controller[0]['internal_address']
@@ -25,6 +26,7 @@ $use_syslog = true
 class { 'cinder::base':
   package_ensure  => 'present',
   rabbit_password => $rabbit_password,
+  qpid_password   => $qpid_password,
   rabbit_hosts    => $rabbit_hosts,
   sql_connection  => $sql_connection,
   verbose         => $verbose,

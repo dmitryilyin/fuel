@@ -3,7 +3,7 @@ $nova_hash = $fuel_settings['nova']
 
 $nova_user_password = $nova_hash['user_password']
 $keystone_host = '127.0.0.1'
-$enabled_apis = 'ec2,osapi_compute,osapi_volume'
+$enabled_apis = 'ec2,osapi_compute'
 
 $nova_rate_limits = {
   'POST' => 1000,

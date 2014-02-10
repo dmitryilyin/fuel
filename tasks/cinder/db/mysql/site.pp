@@ -3,7 +3,7 @@ $cinder_hash   = $fuel_settings['cinder']
 
 $db_password = $cinder_hash['db_password']
 $db_user     = 'cinder'
-$db_dbname   = 'cinder'
+$db_name     = 'cinder'
 $db_host     = $controller_node_address
  
 mysql::account { $db_name :
