@@ -15,6 +15,7 @@ controller_tasks = [
   'rabbitmq::install',
   'rabbitmq::users',
   'nova::db::mysql',
+  'nova::keystone::auth',
   'nova::common',
   'nova::api',
   'nova::cert',

@@ -19,7 +19,7 @@ class { 'nova::api':
   auth_host         => $keystone_host,
   enabled_apis      => $enabled_apis,
   nova_rate_limits  => $nova_rate_limits,
-  cinder            => false,
+  cinder            => true,
 }
 
 exec { 'post-nova_config':
