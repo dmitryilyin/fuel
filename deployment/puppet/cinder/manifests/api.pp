@@ -28,9 +28,12 @@ if $cinder_rate_limits {
   class{'::cinder::limits': limits => $cinder_rate_limits}
 }
   Cinder_config<||> ~> Service['cinder-api']
-  Cinder_config<||> ~> Exec['cinder-manage db_sync']
   Cinder_api_paste_ini<||> ~> Service['cinder-api']
-  Exec['cinder-manage db_sync'] -> Service['cinder-api']
+  
+  if defined(Exec['cinder-manage db_sync']) {
+    Exec['cinder-manage db_sync'] -> Service['cinder-api']
+    Cinder_config<||> ~> Exec['cinder-manage db_sync']
+  }
 
   if $enabled {
     $ensure = 'running'
@@ -45,8 +48,11 @@ if $cinder_rate_limits {
       Cinder_api_paste_ini<||> -> Package['cinder-api']
     }
     "RedHat": {
-  Package[$api_package] -> Cinder_api_paste_ini<||>
-  Package[$api_package] -> Cinder_config<||>
+      if defined(Package[$api_package]) {
+        Package[$api_package] -> Cinder_api_paste_ini<||>
+        Package[$api_package] -> Cinder_config<||>
+        Package[$api_package] -> Service['cinder-api']
+      }
     }
   }
  
@@ -58,8 +64,10 @@ if $cinder_rate_limits {
     name      => $::cinder::params::api_service,
     enable    => $enabled,
     ensure    => $ensure,
-    require   => Package[$api_package, 'python-keystone'],
   }
+  
+  Package <| title == 'python-keystone' |> -> Service['cinder-api']
+  
   cinder_config {
     'DEFAULT/bind_host': value => $bind_host;
     'DEFAULT/osapi_volume_listen': value => $bind_host;
