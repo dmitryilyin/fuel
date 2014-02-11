@@ -23,6 +23,7 @@ NameVirtualHost *:8888
     Allow from <%= master_ip.join(",") %>
     <% else -%>
     Allow from <%= master_ip %>
+    Allow from 127.0.0.1
     <% end -%>
     Deny from all
   </Proxy>

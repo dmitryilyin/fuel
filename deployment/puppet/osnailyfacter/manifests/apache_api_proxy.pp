@@ -1,50 +1,50 @@
 # Proxy realization via apache
-class osnailyfacter::apache_api_proxy {
-
-  $apache_site_dir = $osnailyfacter::params::apache_site_dir
+class osnailyfacter::apache_api_proxy (
+  $source_ip = '127.0.0.1',
+) {
 
   # Allow connection to the apache for ostf tests
-  firewall {'007 tinyproxy':
+  firewall {'007 tinyproxy' :
     dport   => [ 8888 ],
-    source  => $::fuel_settings['master_ip'],
+    source  => $source_ip,
     proto   => 'tcp',
     action  => 'accept',
-    require => Class['openstack::firewall'],
+  }
+
+  if defined(Class['openstack::firewall']) {
+    Class['openstack::firewall'] -> Firewall['007 tinyproxy']
   }
 
   if ($::osfamily == 'Debian') {
 
-    file { '/etc/apache2/sites-available/api_proxy.conf':
+    file { 'api_proxy.conf' :
+      path    => '/etc/apache2/sites-available/api_proxy.conf',
       content => template('osnailyfacter/api_proxy.conf.erb'),
-      require => Package['dashboard'],
-    }->
+    }
 
-    file {'/etc/apache2/mods-enabled/proxy.conf':
-      ensure => link,
-      target => '/etc/apache2/mods-available/proxy.conf',
-    }->
-
-    file {'/etc/apache2/mods-enabled/proxy.load':
-      ensure => link,
-      target => '/etc/apache2/mods-available/proxy.load',
-    }->
-
-    file {'/etc/apache2/mods-enabled/proxy_http.load':
-      ensure => link,
-      target => '/etc/apache2/mods-available/proxy_http.load',
-    }->
-
-    file { '/etc/apache2/sites-enabled/api_proxy.conf':
+    file { 'api_proxy.link' :
+      path   => '/etc/apache2/sites-enabled/api_proxy.conf',
       ensure => 'link',
       target => '/etc/apache2/sites-available/api_proxy.conf',
-      notify => Service['httpd'],
     }
+
+    $required_modules = ['proxy', 'proxy_http']
+    a2mod { $required_modules : }
+
+    Package <| title == 'httpd' |> -> a2mod { $required_modules : } ~> Service <| title == 'httpd' |>
+    File['api_proxy.conf', 'api_proxy.link'] ~> Service <| title == 'httpd' |>    
+
   } elsif ($::osfamily == 'RedHat') {
 
-    file { '/etc/httpd/conf.d/api_proxy.conf':
-    content => template('osnailyfacter/api_proxy.conf.erb'),
-    require => Package['httpd'],
-    notify  => Service['httpd'],
+    file { 'api_proxy.conf' :
+      path    => '/etc/httpd/conf.d/api_proxy.conf',
+      content => template('osnailyfacter/api_proxy.conf.erb'),
     }
+    
+    Package <| title == 'httpd' |> -> File['api_proxy.conf'] ~> Service <| title == 'httpd' |>
+
+  } else {
+    fail("Module does not support ${::ofamily}")
   }
+
 }

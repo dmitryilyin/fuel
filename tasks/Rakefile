@@ -29,9 +29,11 @@ controller_tasks = [
   'nova::objectstore',
   'nova::scheduler',
   'nova::vncproxy',
+  'nova::network',
   'memcached',
   'horizon',
-  'openstack::auth_file',
+  'controller::auth_file',
+  'controller::api_proxy',
 ]
 
 demo_tasks = [

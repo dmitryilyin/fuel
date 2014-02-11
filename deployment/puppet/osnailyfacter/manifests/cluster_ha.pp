@@ -220,7 +220,9 @@ class osnailyfacter::cluster_ha {
     $quantum_network_node = $quantum_netnode_on_cnt
   ) {
 
-    class {'osnailyfacter::apache_api_proxy':}
+    class { 'osnailyfacter::apache_api_proxy' :
+      source_ip => $::fuel_settings['master_ip'],
+    }
 
     class { 'openstack::controller_ha':
       controller_public_addresses   => $controller_public_addresses,

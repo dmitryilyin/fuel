@@ -48,8 +48,8 @@ class { 'nova::quota' :
   quota_max_injected_file_path_bytes    => 4096
 }
 
-$auto_assign_floating_ip = $fuel_settings['auto_assign_floating_ip']
+nova_config { 'DEFAULT/auto_assign_floating_ip' :   value => $fuel_settings['auto_assign_floating_ip'] }
+nova_config { 'DEFAULT/start_guests_on_host_boot' : value => $fuel_settings['start_guests_on_host_boot'] }
+nova_config { 'DEFAULT/use_cow_images' :            value => $fuel_settings['use_cow_images'] }
+nova_config { 'DEFAULT/compute_scheduler_driver' :  value => $fuel_settings['compute_scheduler_driver'] }
 
-nova_config { 'DEFAULT/auto_assign_floating_ip':
-  value => $auto_assign_floating_ip,
-}
