@@ -3,6 +3,8 @@ require 'English'
 
 module Tasks
 
+  # load default config values if they
+  # are not set in config file
   def self.config_defaults(defaults_hash)
     raise 'Defaults is not a Hash!' unless defaults_hash.is_a? Hash
     defaults_hash.each do |k, v|
@@ -11,6 +13,7 @@ module Tasks
     end
   end
 
+  # a set of default config values
   def self.set_config_defaults
     defaults_hash = {
       :task_dir         => '/etc/puppet/tasks',
@@ -76,6 +79,7 @@ module Tasks
     return errors, text
   end
 
+  # run task's action and process options
   def self.run_action(action, directory, option)
     raise "Unknown action: #{action}" unless %w(pre run post deploy).include? action
     task = Tasks::Task.new directory
@@ -95,6 +99,8 @@ module Tasks
     exit
   end
 
+  # creates task api symlinks in a directory
+  # to initialize it as standard task
   def self.create_api_links(task_dir = nil, api = nil, actions = %w(pre run post))
     api = File.join Tasks.config[:task_dir], Tasks.config[:api_file] unless api
     task_dir = '.' unless task_dir
@@ -107,6 +113,8 @@ module Tasks
     end
   end
 
+  # walk across the folders in the task dir and create api links
+  # for every folder that looks like task
   def self.create_all_task_links (task_file_check = true, puppet_manifest_check = true)
     require 'find'
     raise 'No task dir!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
@@ -128,6 +136,20 @@ module Tasks
       next unless actions.select { |a| path.end_with?('/' + a) }.any? and File.symlink? path
       puts "X-> #{path}"
       File.unlink path
+    end
+  end
+
+  # find tasks without spec
+  def self.check_if_spec_present
+    require 'find'
+    raise 'No task dir!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
+    Find.find(Tasks.config[:task_dir] + '/') do |path|
+      if path.end_with? '/run'
+        task_dir = File.dirname path
+        task = Tasks::Task.new task_dir
+        puts "No pre-deploy test in task #{task.name} at #{task.directory}" unless task.has_pre_spec?
+        puts "No post-deploy test in task #{task.name} at #{task.directory}" unless task.has_post_spec?
+      end
     end
   end
 
@@ -177,6 +199,7 @@ module Tasks
       @directory
     end
 
+    # show the task's description file
     def readme
       return nil unless File.exists? @readme_file
       begin
@@ -189,6 +212,7 @@ module Tasks
       readme
     end
 
+    # return task's title string
     def title
       return @title if @title
       return nil unless File.exists? @readme_file
@@ -320,6 +344,18 @@ module Tasks
       end
       write_report make_xunit report
       error_code
+    end
+
+    # does this task have pre-deploy spec?
+    def has_pre_spec?
+      spec_file = File.join directory, Tasks.config[:spec_pre]
+      File.exists? spec_file
+    end
+
+    # does this task have post-deploy spec?
+    def has_post_spec?
+      spec_file = File.join directory, Tasks.config[:spec_post]
+      File.exists? spec_file
     end
 
     # run pre-deploymnet serverspec test
