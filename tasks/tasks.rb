@@ -3,6 +3,8 @@ require 'English'
 
 module Tasks
 
+  ### Config functions ###
+
   # load default config values if they
   # are not set in config file
   def self.config_defaults(defaults_hash)
@@ -47,6 +49,8 @@ module Tasks
     self.parse_config unless @config
     @config
   end
+
+  ### CLI utils related functions ###
 
   # this method parses xunit report to human readable form
   def self.read_xunit(file_name)
@@ -172,7 +176,9 @@ module Tasks
     tasks.each { |t| self.print_task_line t, max_length + 1 }
   end
 
-  #####################################
+  ### Task Class ###
+
+  # Works with a single tasks, its actions and variables #
 
   # this class represents a single task
   class Task
