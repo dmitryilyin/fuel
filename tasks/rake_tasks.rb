@@ -14,10 +14,10 @@ def make_task(file)
       puts "Run task: #{name} action: #{action}"
       File.chmod 0755, file unless File.stat(file).executable?
       system file
-      new_task.report_read action
+      new_task.report_output action
     end
     task "#{action}/report" do
-      new_task.report_read action
+      new_task.report_output action
     end
     task "#{action}/raw" do
       new_task.report_raw action

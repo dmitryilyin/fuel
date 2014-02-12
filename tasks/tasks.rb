@@ -50,16 +50,15 @@ module Tasks
     @config
   end
 
-  ### CLI utils related functions ###
+  ### Utils functions ###
 
   # this method parses xunit report to human readable form
-  def self.read_xunit(file_name)
+  def self.xunit_to_list(xunit)
     require 'rubygems'
     require 'rexml/document'
     include REXML
 
-    raise 'No file given!' unless file_name
-    xml = REXML::Document.new File.open file_name, 'r'
+    xml = REXML::Document.new xunit
     raise 'Could not parse file!' unless xml
 
     text = ''
@@ -83,24 +82,10 @@ module Tasks
     return errors, text
   end
 
-  # run task's action and process options
-  def self.run_action(action, directory, option)
-    raise "Unknown action: #{action}" unless %w(pre run post deploy).include? action
-    task = Tasks::Task.new directory
-
-    case option
-      when 'report'
-        task.report_read action
-      when 'raw'
-        task.report_raw action
-      when 'remove'
-        task.report_remove action
-      when 'check'
-        exit task.success? action
-      else
-        task.send action
-    end
-    exit
+  # this method parses json report to human readable form
+  def self.json_to_list(json)
+    #  TODO implement
+    return 0, ''
   end
 
   # creates task api symlinks in a directory
@@ -197,6 +182,7 @@ module Tasks
       task_path.slice! Tasks.config[:task_dir]
       task_path.slice! /[\/\.]+/
       task_path.gsub! '/', '::'
+      task_path.gsub! ',', ''
       @name = task_path
     end
 
@@ -260,13 +246,14 @@ module Tasks
 
     # get path to the report file of the given action
     def report_file_path(action = 'run')
+      action = action.to_s unless action.is_a? String
       task_report_dir = File.join Tasks.config[:report_dir], name
       unless File.exists? task_report_dir
         require 'fileutils'
         FileUtils.mkdir_p task_report_dir
       end
       raise "No directory #{task_report_dir} for report!" unless File.directory? task_report_dir
-      File.join task_report_dir, action + Tasks.config[:report_extension]
+      File.join task_report_dir, action + '.' + Tasks.config[:report_extension]
     end
 
     # write report to file
@@ -277,20 +264,16 @@ module Tasks
       file.close
     end
 
-    # read report from file and output in a human readable form
+    # read report from file and return it as a string
     def report_read(action = 'run')
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
-      errors, report = Tasks.read_xunit file
-      puts report
-      errors
+      File.read file
     end
 
     # was this task successful? based on report file
     def success?(action = 'run')
-      file = report_file_path action
-      raise "No report file #{file}" unless File.exists? file
-      errors, report = Tasks.read_xunit file
+      errors, report = Tasks.xunit_to_list report_read(action)
       errors == 0
     end
 
@@ -301,9 +284,12 @@ module Tasks
 
     # read report from file and output it in a raw form
     def report_raw(action = 'run')
-      file = report_file_path action
-      raise "No report file #{file}" unless File.exists? file
-      report = File.read file
+      puts report_read(action)
+    end
+
+    # read report and output it in human-readable form
+    def report_output(action = 'run')
+      errors, report = Tasks.xunit_to_list report_read(action)
       puts report
     end
 
@@ -398,17 +384,26 @@ module Tasks
       $CHILD_STATUS.exitstatus
     end
 
-    # run pre, run and post to deploy this task
-    # mostly to provide compatibility with simple orchestrators
-    #def deploy
-    #  pre
-    #  report_read 'pre'
-    #  raise 'Pre-deploy test failed!' unless success? 'pre'
-    #  run
-    #  post
-    #  report_read 'post'
-    #  raise 'Post-deploy test failed!' unless success? 'post'
-    #end
+  end
+
+  ### Agent class ###
+
+  # Controlls the process of tasks execution, tests, daemonization, pids and logs #
+
+  class Agent
+    def initialize(task_name)
+      raise 'Base directory of tasks is not set!' unless Tasks.config[:task_dir] and File.directory? Tasks.config[:task_dir]
+      raise 'Report directory is not set!' unless Tasks.config[:report_dir]
+      raise 'Pid directory is not set!' unless Tasks.config[:pid_dir]
+      task_directory = task_name.gsub '::', '/'
+      task_directory = File.join Tasks.config[:task_dir], task_directory
+      @task = Tasks::Task.new task_directory
+    end
+
+    def task
+      @task
+    end
+
 
   end
 
