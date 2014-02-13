@@ -1,0 +1,39 @@
+--- 
+:controller:
+- checks::support
+- checks::settings
+- network::nova
+- network::hosts
+- mysql::simple
+- keystone::db::mysql
+- keystone::install
+- keystone::admin_role
+- keystone::endpoint
+- rabbitmq::install
+- rabbitmq::users
+- cinder::db::mysql
+- cinder::base
+- cinder::volume::iscsi
+- cinder::api
+- cinder::scheduler
+- nova::db::mysql
+- nova::keystone::auth
+- nova::common
+- nova::api
+- nova::cert
+- nova::conductor
+- nova::consoleauth
+- nova::objectstore
+- nova::scheduler
+- nova::vncproxy
+- nova::network
+- memcached
+- horizon
+- controller::auth_file
+- controller::api_proxy
+:demo:
+- demo::apache::install
+- demo::apache::start
+- demo::hello_world_page
+:example:
+- example

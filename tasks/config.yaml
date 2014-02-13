@@ -1,13 +1,17 @@
+---
 # global
 :task_dir: '/etc/puppet/tasks'
+:library_dir: '/etc/puppet/tasks/library'
 :module_dir: '/etc/puppet/modules'
-:puppet_options: '--verbose --debug'
 :report_format: 'xunit' #or json
 :report_extension: 'xml'
 :report_dir: '/var/log/tasks'
 :pid_dir: '/var/run/tasks'
+:debug: true
 # task
-:puppet_manifest: 'site.pp'
 :spec_pre: 'spec/pre_spec.rb'
 :spec_post: 'spec/post_spec.rb'
-:task_file: 'task.md'
+:task_file: 'task.yaml'
+# puppet options
+:puppet_options: '--verbose --debug'
+:puppet_manifest: 'site.pp'
