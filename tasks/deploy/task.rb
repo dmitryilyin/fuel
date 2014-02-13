@@ -19,6 +19,9 @@ module Deploy
       task_file = Deploy::Config[:task_file]
       @task_file = File.join directory, task_file
       @directory = directory
+      @pre_plugin = nil
+      @run_plugin = nil
+      @post_plugin = nil
       Deploy::Utils.debug "#{self.class} created with directory #{directory}"
     end
 
@@ -45,9 +48,7 @@ module Deploy
     def metadata
       return @metadata if @metadata
       task_metadata = YAML.load_file @task_file
-      unless task_metadata.is_a? Hash
-        task_metadata = {}
-      end
+      task_metadata = {} unless task_metadata.is_a? Hash
       Deploy::Utils.symbolize_hash task_metadata
       default_task_metadata = default_metadata
       Deploy::Utils.symbolize_hash default_task_metadata
@@ -59,18 +60,18 @@ module Deploy
     # @return [Hash]
     def default_metadata
       {
-        :task_comment     => '',
-        :task_description => '',
+        :comment          => '',
+        :description      => '',
         :pre_plugin       => nil,
-        :pre_parameters   => nil,
+        :pre_params       => nil,
         :pre_timeout      => nil,
         :pre_autoreport   => false,
         :run_plugin       => nil,
-        :run_parameters   => nil,
+        :run_params       => nil,
         :run_timeout      => nil,
         :run_autoreport   => false,
         :post_plugin      => nil,
-        :post_parameters  => nil,
+        :post_params      => nil,
         :post_timeout     => nil,
         :post_autoreport  => false,
       }
@@ -79,28 +80,38 @@ module Deploy
     # return task's title string
     # @return [String]
     def comment
-      return @title if @title
-      title = metadata[:task_comment]
-      @title = title
+      return @comment if @comment
+      comment = metadata[:comment]
+      @title = comment
     end
 
     alias :title :comment
 
+    # return the description text of this task
+    def description
+      return @description if @description
+      description = metadata[:description]
+      @description = description
+    end
+
+    alias :info :description
+
     # get path to the report file of the given action
     # @return [String]
-    def report_file_path(action = 'run')
-      action = action.to_s unless action.is_a? String
+    # @param action [Symbol]
+    def report_file_path(action)
       task_report_dir = File.join Deploy::Config[:report_dir], name
       unless File.exists? task_report_dir
         require 'fileutils'
         FileUtils.mkdir_p task_report_dir
       end
       raise "No directory #{task_report_dir} for report!" unless File.directory? task_report_dir
-      File.join task_report_dir, action + '.' + Deploy::Config[:report_extension]
+      File.join task_report_dir, action.to_s + '.' + Deploy::Config[:report_extension]
     end
 
     # write report to file
-    def report_write(report, action = 'run')
+    # @param action [Symbol]
+    def report_write(report, action)
       file = File.open report_file_path(action), 'w'
       raise "Could not open report file #{file} for writing!" unless file
       file.write report
@@ -109,90 +120,96 @@ module Deploy
 
     # read report from file and return it as a string
     # @return [String]
-    def report_read(action = 'run')
+    # @param action [Symbol]
+    def report_read(action)
       file = report_file_path action
       raise "No report file #{file}" unless File.exists? file
       File.read file
     end
 
     # was this task successful? based on report file
-    def success?(action = 'run')
+    # @param action [Symbol]
+    def success?(action)
       report = Deploy::Utils.xunit_to_list report_read(action)
       report[:errors] == 0
     end
 
     # did this task fail?
-    def fail?(action = 'run')
+    # @param action [Symbol]
+    def fail?(action)
       !success? action
     end
 
     # read report from file and output it in a raw form
-    def report_raw(action = 'run')
+    # @param action [Symbol]
+    def report_raw(action)
       puts report_read(action)
     end
 
     # read report and output it in human-readable form
-    def report_output(action = 'run')
+    # @param action [Symbol]
+    def report_output(action)
       report = Deploy::Utils.xunit_to_list report_read(action)
       puts report[:text]
     end
 
     # remove the report file
-    def report_remove(action = 'run')
+    # @param action [Symbol]
+    def report_remove(action)
       file = report_file_path action
       File.delete file if File.exists? file
     end
 
     # get pre action plugin for this task
-    # @return plugin [Deploy::Action]
+    # @return [Deploy::Action]
     def pre_plugin
       @pre_plugin
     end
 
     # get run action plugin for this task
-    # @return plugin [Deploy::Action]
+    # @return [Deploy::Action]
     def run_plugin
       @run_plugin
     end
 
     # get run action plugin for this task
-    # @return plugin [Deploy::Action]
+    # @return [Deploy::Action]
     def post_plugin
       @post_plugin
     end
 
     # write report file with success
     # telling that there is no action to do
-    # @param action [String]
+    # @param action [Symbol]
     def report_no_action(action)
       report = {
           :classname => self.class,
-          :name => "No #{action.capitalize}",
+          :name => "No #{action.to_s.capitalize}",
       }
       report_write Deploy::Utils.make_xunit(report), action
     end
 
     # write report file with success
     # telling that action passed without errors
-    # @param action [String]
+    # @param action [Symbol]
     def report_ok_action(action)
       report = {
           :classname => self.class,
-          :name => "Action #{action.capitalize}",
+          :name => "Action #{action.to_s.capitalize}",
       }
       report_write Deploy::Utils.make_xunit(report), action
     end
 
     # write report file with failure
     # telling that there were errors during action
-    # @param action [String]
+    # @param action [Symbol]
     def report_fail_action(action)
       report = {
           :classname => self.class,
-          :name => "Action #{action.upcase}",
+          :name => "Action #{action.to_s.capitalize}",
           :failure => {
-              :message => "Action #{action.capitalize} Fail",
-              :text => "Execution of action #{action.upcase} have failed!",
+              :message => "Action #{action.to_s.capitalize} Fail",
+              :text => "Execution of action #{action.to_s.capitalize} have failed!",
           }
       }
       report_write Deploy::Utils.make_xunit(report), action
@@ -214,10 +231,9 @@ module Deploy
     end
 
     # check if this task has given action
-    # @param action [String]
+    # @param action [Symbol]
     def has_action?(action)
-      action = action.to_sym unless action.is_a? Symbol
-      case action
+      case action.to_sym
         when :pre  then has_post?
         when :run  then has_run?
         when :post then has_post?
@@ -230,15 +246,15 @@ module Deploy
     # @return [Numeric]
     def pre
       unless has_pre?
-        report_no_action 'pre'
+        report_no_action :pre
         return 0
       end
       exit_code = pre_plugin.start
       if metadata[:pre_autoreport]
         if exit_code == 0
-          report_ok_action 'pre'
+          report_ok_action :pre
         else
-          report_fail_action 'pre'
+          report_fail_action :pre
         end
       end
     end
@@ -248,15 +264,15 @@ module Deploy
     # @return [Numeric]
     def run
       unless has_run?
-        report_no_action 'run'
+        report_no_action :run
         return 0
       end
       exit_code = run_plugin.start
       if metadata[:run_autoreport]
         if exit_code == 0
-          report_ok_action 'run'
+          report_ok_action :run
         else
-          report_fail_action 'run'
+          report_fail_action :run
         end
       end
     end
@@ -266,15 +282,15 @@ module Deploy
     # @return [Numeric]
     def post
       unless has_post?
-        report_no_action 'post'
+        report_no_action :post
         return 0
       end
-      exit_code = run_plugin.post
+      exit_code = post_plugin.start
       if metadata[:post_autoreport]
         if exit_code == 0
-          report_ok_action 'post'
+          report_ok_action :post
         else
-          report_fail_action 'post'
+          report_fail_action :post
         end
       end
     end
@@ -290,18 +306,20 @@ module Deploy
       plugins[name.to_sym]
     end
 
+    # take a plugin class for every action
+    # if plugin type is set in metadata
     def set_plugins
       if metadata[:pre_plugin]
         plugin = plugin_matrix metadata[:pre_plugin]
-        @pre_plugin = plugin.new self, 'pre', metadata[:pre_parameters] if plugin
+        @pre_plugin = plugin.new self, :pre, metadata[:pre_params] if plugin
       end
       if metadata[:run_plugin]
         plugin = plugin_matrix metadata[:run_plugin]
-        @run_plugin = plugin.new self, 'run', metadata[:run_parameters] if plugin
+        @run_plugin = plugin.new self, :run, metadata[:run_params] if plugin
       end
       if metadata[:post_plugin]
         plugin = plugin_matrix metadata[:post_plugin]
-        @post_plugin = plugin.new self, 'post', metadata[:post_parameters] if plugin
+        @post_plugin = plugin.new self, :post, metadata[:post_params] if plugin
       end
     end
 

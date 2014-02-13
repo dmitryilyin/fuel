@@ -1,0 +1,8 @@
+:comment: Test shell task
+:description: This tasks demonstrates the use of shell scripts in the tasks.
+:pre_plugin: exec
+:pre_params: pre.sh
+:run_plugin: exec
+:run_params: run.sh
+:post_plugin: exec
+:post_params: post.sh

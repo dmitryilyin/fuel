@@ -12,40 +12,49 @@ class Deploy::PuppetAction < Deploy::Action
     super task, action
   end
 
+  # return this action's file name
   # @return [String]
   def file
     @file
   end
 
+  # return the full path to ths action's file
   # @return [String]
   def path
     path = File.expand_path File.join task.directory, file
     @path = path
   end
 
+  # is there a puppet manifest of this action
   def exists?
     File.exists? path and File.readable? path
   end
 
+  # write the report file with success
+  # telling that there is no puppet manifest
   def report_no
     report = {
-      :classname => 'Deploy::PuppetAction',
+      :classname => self.class,
       :name => 'No Manifest',
     }
     report_write Deploy::Utils.make_xunit report
   end
 
+  # write the report file with success
+  # telling that puppet apply went ok
   def report_ok
     report = {
-      :classname => 'Puppet:PuppetAction',
+      :classname => self.class,
       :name => 'Puppet Apply',
     }
     report_write Deploy::Utils.make_xunit report
   end
 
+  # write the report file with success
+  # telling that puppet apply had errors
   def report_fail
     report = {
-      :classname => 'Deploy::PuppetAction',
+      :classname => self.class,
       :name => 'Puppet Apply',
       :failure => {
           :message => 'Puppet Error',
@@ -55,13 +64,15 @@ class Deploy::PuppetAction < Deploy::Action
     report_write Deploy::Utils.make_xunit report
   end
 
+  # create a puppet command line
+  # @return [String]
   def puppet_command
     puppet_command = 'puppet apply --detailed-exitcodes'
     puppet_command += " --modulepath=\"#{Deploy::Config[:module_dir]}\"" if Deploy::Config[:module_dir]
-    puppet_command += " #{Deploy::Config[:puppet_options]}" if Deploy::Config[:puppet_options]
-    puppet_command
+    puppet_command + " #{Deploy::Config[:puppet_options]}" if Deploy::Config[:puppet_options]
   end
 
+  # start the puppet run
   # @return[Fixnum]
   def start
     unless exists?
@@ -69,13 +80,13 @@ class Deploy::PuppetAction < Deploy::Action
       return 0
     end
     system "#{puppet_command} #{path}"
-    error_code = $CHILD_STATUS.exitstatus
-    if [0,2].include? error_code
+    exit_code = $CHILD_STATUS.exitstatus
+    if [0,2].include? exit_code
       report_ok
     else
       report_fail
     end
-    error_code
+    exit_code
   end
 
 end

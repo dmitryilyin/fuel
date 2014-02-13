@@ -47,7 +47,7 @@ module Deploy
       errors = 0
       require 'time'
       timestamp = Time.now.iso8601
-      time = testcases.inject(0.0) { |t, tc| t + tc[:time] || 0.0 }
+      time = testcases.inject(0.0) { |t, tc| t + (tc[:time] || 0.0) }
       xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
       xml += "<testsuite tests=\"#{tests}\" failures=\"#{failures}\" errors=\"#{errors}\" timestamp=\"#{timestamp}\" time=\"#{time}\">\n"
       testcases.each do |tc|

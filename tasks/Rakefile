@@ -17,9 +17,9 @@ def make_task(directory)
     next unless task.has_action? action
     namespace name do
       task action do
-        puts "Run task: #{name} action: #{action}"
+        Deploy::Utils.debug "Run task: #{name} action: #{action}"
         task.send action.to_sym
-        task.report_output action
+        #task.report_output action
       end
       task "#{action}/report" do
         task.report_output action
@@ -44,7 +44,7 @@ def make_task(directory)
     end
     task name do
       all_tasks = Rake.application.tasks.map { |t| t.name }
-      puts "Run full task: #{name}"
+      Deploy::Utils.debug "Run full task: #{name}"
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
         raise "Pre-deployment test of task \"#{name}\" failed!" if task.fail? 'pre'

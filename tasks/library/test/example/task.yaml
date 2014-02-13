@@ -1,3 +1,3 @@
-:task_comment: Simple example task
-:task_description: The simple example task. Creates a file in /tmp folder and contains tests.
+:comment: Simple example task
+:description: The simple example task. Creates a file in /tmp folder and contains tests.
 :run_plugin: puppet

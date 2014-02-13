@@ -11,68 +11,82 @@ class Deploy::ExecAction < Deploy::Action
     super task, action
   end
 
+  # return this action's file name
   # @return [String]
   def file
     @file
   end
 
+  # return the full path to this action's file
   # @return [String]
   def path
     path = File.expand_path File.join task.directory, file
     @path = path
   end
 
+  # ensure that action file is executable
+  # make it if not
   def ensure_executable
     File.chmod 0755, path unless File.stat(path).executable?
   end
 
+  # is there an action file for ths action?
   def exists?
     File.file? path and File.readable? path
   end
 
+  # write the report file with success
+  # telling that there is no action file
+  # for this action
   def report_no
     report = {
-        :classname => 'Deploy::ExecAction',
-        :name => 'No Script',
+        :classname => self.class,
+        :name => 'No Exec',
     }
     report_write Deploy::Utils.make_xunit report
   end
 
+  # write the report file with success
+  # telling that exec was successful
   def report_ok
     report = {
-        :classname => 'Deploy::ExecAction',
-        :name => 'Script Run',
+        :classname => self.class,
+        :name => 'Exec Run',
     }
     report_write Deploy::Utils.make_xunit report
   end
 
+  # write the report file with error
+  # telling that exec have failed
   def report_fail
     report = {
-        :classname => 'Deploy::ExecAction',
-        :name => 'Script Run',
+        :classname => self.class,
+        :name => 'Exec Run',
         :failure => {
-            :message => 'Script Failed',
-            :text => "Script #{path} have failed!"
+            :message => 'Exec Failed',
+            :text => "Exec #{path} have failed!"
         }
     }
     report_write Deploy::Utils.make_xunit report
   end
 
+  # run the exec action
   # @return [Fixnum]
   def start
+    Deploy::Utils.debug "Start #{self.class} for action #{action.to_s} and file #{path}"
     unless exists?
       report_no
       return 0
     end
     ensure_executable
     system path
-    error_code = $CHILD_STATUS.exitstatus
-    if error_code == 0
+    exit_code = $CHILD_STATUS.exitstatus
+    if exit_code == 0
       report_ok
     else
       report_fail
     end
-    error_code
+    exit_code
   end
 
 end

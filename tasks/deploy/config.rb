@@ -5,19 +5,10 @@ module Deploy
   # deploymnet configuration class #
   class Config
 
-    # load default config values if they
-    # are not set in config file
-    def self.config_defaults(defaults_hash)
-      raise 'Defaults is not a Hash!' unless defaults_hash.is_a? Hash
-      defaults_hash.each do |k, v|
-        k = k.to_sym
-        @config[k] = v unless @config[k]
-      end
-    end
-
     # a set of default config values
-    def self.set_config_defaults
-      defaults_hash = {
+    # @return [Hash]
+    def self.default_config
+      {
           :task_dir         => '/etc/puppet/tasks',
           :library_dir      => '/etc/puppet/tasks/library',
           :module_dir       => '/etc/puppet/modules',
@@ -33,30 +24,30 @@ module Deploy
           :api_file         => 'api.rb',
           :debug            => true,
       }
-      config_defaults defaults_hash
     end
 
     # this module method loads task config file
-    def self.parse_config(config_path = nil)
-      script_dir = File.dirname __FILE__
-      config_file = 'config.yaml'
-      config_path = File.join script_dir, '..', config_file unless config_path
-      @config = YAML.load_file(config_path)
-      raise 'Could not parse config file' unless @config
-      self.set_config_defaults
-    end
-
-    # this method loads and returns task config with mnomoisation
+    # and sets default values for values not present
+    # in config file
     # @return [Hash]
     def self.config
-      self.parse_config unless @config
-      @config
+      return @config if @config
+      script_dir = File.dirname __FILE__
+      config_file = 'config.yaml'
+      config_path = File.join script_dir, '..', config_file
+      config = YAML.load_file(config_path)
+      config = {} unless config.is_a? Hash
+      @config = self.default_config.merge config
     end
 
+    # makes possible to access config like this
+    # Deploy::Config.task_dir
     def self.method_missing(key)
       self.config[key]
     end
 
+    # makes possible to access config like this
+    # Deploy::Config[:task_dir]
     def self.[](key)
       self.config[key]
     end
