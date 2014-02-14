@@ -1,0 +1,14 @@
+:comment: Check that Fuel Settings file exists
+:description: This tasks checks that /etc/astute.yaml is present.
+:pre_plugin: rspec
+#:pre_params:
+#:pre_timeout:
+#:pre_autoreport:
+#:run_plugin:
+#:run_params:
+#:run_timeout:
+#:run_autoreport:
+#:post_plugin:
+#:post_params:
+#:post_timeout:
+#:post_autoreport:

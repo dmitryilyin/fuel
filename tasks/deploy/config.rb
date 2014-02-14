@@ -9,20 +9,20 @@ module Deploy
     # @return [Hash]
     def self.default_config
       {
-          :task_dir         => '/etc/puppet/tasks',
-          :library_dir      => '/etc/puppet/tasks/library',
-          :module_dir       => '/etc/puppet/modules',
-          :puppet_options   => '',
-          :report_format    => 'xunit',
+          :task_dir => '/etc/puppet/tasks',
+          :library_dir => '/etc/puppet/tasks/library',
+          :module_dir => '/etc/puppet/modules',
+          :puppet_options => '',
+          :report_format => 'xunit',
           :report_extension => '',
-          :report_dir       => '/var/log/tasks',
-          :pid_dir          => '/var/run/tasks',
-          :puppet_manifest  => 'site.pp',
-          :spec_pre         => 'spec/pre_spec.rb',
-          :spec_post        => 'spec/post_spec.rb',
-          :task_file        => 'task.yaml',
-          :api_file         => 'api.rb',
-          :debug            => true,
+          :report_dir => '/var/log/tasks',
+          :pid_dir => '/var/run/tasks',
+          :puppet_manifest => 'site.pp',
+          :spec_pre => 'spec/pre_spec.rb',
+          :spec_post => 'spec/post_spec.rb',
+          :task_file => 'task.yaml',
+          :api_file => 'taskapi.rb',
+          :debug => false,
       }
     end
 

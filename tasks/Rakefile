@@ -2,12 +2,11 @@ require 'rubygems'
 require 'find'
 require 'yaml'
 require 'deploy'
-require 'pry'
 
 # create rake task and sub-tasks
 # @param directory [String]
 def make_task(directory)
-  Deploy::Utils.debug "Make rake task for directory #{directory}"
+  Deploy::Utils.debug "Start to make task for the directory #{directory}"
   task = Deploy::Task.new directory
   name = task.name
   task.set_plugins
@@ -15,11 +14,13 @@ def make_task(directory)
   actions = %w(pre run post)
   actions.each do |action|
     next unless task.has_action? action
+    Deploy::Utils.debug "Make rake task #{name}::#{action}"
     namespace name do
       task action do
-        Deploy::Utils.debug "Run task: #{name} action: #{action}"
+        Deploy::Utils.debug "Run rake task: #{name} action: #{action}"
         task.send action.to_sym
-        #task.report_output action
+        task.report_output action
+        Deploy::Utils.debug "End rake task: #{name} action: #{action}"
       end
       task "#{action}/report" do
         task.report_output action
@@ -44,7 +45,7 @@ def make_task(directory)
     end
     task name do
       all_tasks = Rake.application.tasks.map { |t| t.name }
-      Deploy::Utils.debug "Run full task: #{name}"
+      Deploy::Utils.debug "Run full rake task: #{name}"
       if all_tasks.include? "#{name}:pre"
         Rake::Task["#{name}:pre"].invoke
         raise "Pre-deployment test of task \"#{name}\" failed!" if task.fail? 'pre'
@@ -56,9 +57,10 @@ def make_task(directory)
         Rake::Task["#{name}:post"].invoke
         raise "Post-deployment test of task \"#{name}\" failed!" if task.fail? 'post'
       end
+      Deploy::Utils.debug "End full rake task: #{name}"
     end
     task "#{name}/info" do
-      puts task.title
+      puts task.description
     end
   end
 
@@ -136,4 +138,4 @@ task 'list/all' do
   Deploy::Utils.print_tasks_list main_tasks
 end
 
-task :default => [ :list ]
+task :default => [:list]

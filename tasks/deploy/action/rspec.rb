@@ -7,8 +7,15 @@ class Deploy::RSpecAction < Deploy::Action
   # @param action [String]
   # @param spec [String]
   def initialize(task, action, spec = nil)
+    spec = case action.to_sym
+             when :pre then
+               Deploy::Config[:spec_pre]
+             when :post then
+               Deploy::Config[:spec_post]
+             else
+               raise 'Spec file was not given!'
+           end unless spec
     @file = spec
-    @file = Deploy::Config[:puppet_manifest] unless @file
     super task, action
   end
 
@@ -47,10 +54,14 @@ class Deploy::RSpecAction < Deploy::Action
     rspec_command = 'rspec'
     report_format = Deploy::Config[:report_format]
     case report_format
-      when 'xunit' then rspec_command += ' -f RspecJunitFormatter'
-      when 'json'  then rspec_command += ' -f json'
-      when 'text'  then rspec_command += ' -f doc'
-      else raise "Report format #{report_format} is not supported!"
+      when 'xunit' then
+        rspec_command += ' -f RspecJunitFormatter'
+      when 'json' then
+        rspec_command += ' -f json'
+      when 'text' then
+        rspec_command += ' -f doc'
+      else
+        raise "Report format #{report_format} is not supported!"
     end
     rspec_command + " --out \"#{report_file_path}\""
   end
@@ -58,6 +69,7 @@ class Deploy::RSpecAction < Deploy::Action
   # run the rspec test
   # @return[Fixnum]
   def start
+    Deploy::Utils.debug "Start #{self.class} plugin with #{path} spec"
     unless exists?
       report_no
       return 0

@@ -22,7 +22,7 @@ module Deploy
       @pre_plugin = nil
       @run_plugin = nil
       @post_plugin = nil
-      Deploy::Utils.debug "#{self.class} created with directory #{directory}"
+      Deploy::Utils.debug "Created #{self.class} with name #{name} and directory #{directory}"
     end
 
     # name of this task
@@ -60,20 +60,20 @@ module Deploy
     # @return [Hash]
     def default_metadata
       {
-        :comment          => '',
-        :description      => '',
-        :pre_plugin       => nil,
-        :pre_params       => nil,
-        :pre_timeout      => nil,
-        :pre_autoreport   => false,
-        :run_plugin       => nil,
-        :run_params       => nil,
-        :run_timeout      => nil,
-        :run_autoreport   => false,
-        :post_plugin      => nil,
-        :post_params      => nil,
-        :post_timeout     => nil,
-        :post_autoreport  => false,
+          :comment => '',
+          :description => '',
+          :pre_plugin => nil,
+          :pre_params => nil,
+          :pre_timeout => nil,
+          :pre_autoreport => false,
+          :run_plugin => nil,
+          :run_params => nil,
+          :run_timeout => nil,
+          :run_autoreport => false,
+          :post_plugin => nil,
+          :post_params => nil,
+          :post_timeout => nil,
+          :post_autoreport => false,
       }
     end
 
@@ -82,7 +82,7 @@ module Deploy
     def comment
       return @comment if @comment
       comment = metadata[:comment]
-      @title = comment
+      @comment = comment
     end
 
     alias :title :comment
@@ -217,27 +217,31 @@ module Deploy
 
     # check if this task has pre-deploy test action
     def has_pre?
-      !pre_plugin.nil?
+      !!pre_plugin
     end
 
     # check if this task has run action
     def has_run?
-      !run_plugin.nil?
+      !!run_plugin
     end
 
     # check if this task has post-deploy action
     def has_post?
-      !post_plugin.nil?
+      !!post_plugin
     end
 
     # check if this task has given action
     # @param action [Symbol]
     def has_action?(action)
       case action.to_sym
-        when :pre  then has_post?
-        when :run  then has_run?
-        when :post then has_post?
-        else false
+        when :pre then
+          has_pre?
+        when :run then
+          has_run?
+        when :post then
+          has_post?
+        else
+          false
       end
     end
 
@@ -249,6 +253,7 @@ module Deploy
         report_no_action :pre
         return 0
       end
+      Dir.chdir directory or raise "Could not cd to #{directory}"
       exit_code = pre_plugin.start
       if metadata[:pre_autoreport]
         if exit_code == 0
@@ -267,6 +272,7 @@ module Deploy
         report_no_action :run
         return 0
       end
+      Dir.chdir directory or raise "Could not cd to #{directory}"
       exit_code = run_plugin.start
       if metadata[:run_autoreport]
         if exit_code == 0
@@ -285,6 +291,7 @@ module Deploy
         report_no_action :post
         return 0
       end
+      Dir.chdir directory or raise "Could not cd to #{directory}"
       exit_code = post_plugin.start
       if metadata[:post_autoreport]
         if exit_code == 0
@@ -298,10 +305,11 @@ module Deploy
     # @param name [String]
     # @return [Class]
     def plugin_matrix(name)
+      return nil unless name
       plugins = {
           :puppet => Deploy::PuppetAction,
-          :exec   => Deploy::ExecAction,
-          :rspec  => Deploy::RSpecAction,
+          :exec => Deploy::ExecAction,
+          :rspec => Deploy::RSpecAction,
       }
       plugins[name.to_sym]
     end

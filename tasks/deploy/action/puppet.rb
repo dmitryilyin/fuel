@@ -34,8 +34,8 @@ class Deploy::PuppetAction < Deploy::Action
   # telling that there is no puppet manifest
   def report_no
     report = {
-      :classname => self.class,
-      :name => 'No Manifest',
+        :classname => self.class,
+        :name => 'No Manifest',
     }
     report_write Deploy::Utils.make_xunit report
   end
@@ -44,8 +44,8 @@ class Deploy::PuppetAction < Deploy::Action
   # telling that puppet apply went ok
   def report_ok
     report = {
-      :classname => self.class,
-      :name => 'Puppet Apply',
+        :classname => self.class,
+        :name => 'Puppet Apply',
     }
     report_write Deploy::Utils.make_xunit report
   end
@@ -54,12 +54,12 @@ class Deploy::PuppetAction < Deploy::Action
   # telling that puppet apply had errors
   def report_fail
     report = {
-      :classname => self.class,
-      :name => 'Puppet Apply',
-      :failure => {
-          :message => 'Puppet Error',
-          :text => "Puppet manifest #{path} apply have failed!"
-      }
+        :classname => self.class,
+        :name => 'Puppet Apply',
+        :failure => {
+            :message => 'Puppet Error',
+            :text => "Puppet manifest #{path} apply have failed!"
+        }
     }
     report_write Deploy::Utils.make_xunit report
   end
@@ -81,7 +81,7 @@ class Deploy::PuppetAction < Deploy::Action
     end
     system "#{puppet_command} #{path}"
     exit_code = $CHILD_STATUS.exitstatus
-    if [0,2].include? exit_code
+    if [0, 2].include? exit_code
       report_ok
     else
       report_fail

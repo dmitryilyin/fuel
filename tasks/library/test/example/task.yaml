@@ -1,3 +1,5 @@
 :comment: Simple example task
 :description: The simple example task. Creates a file in /tmp folder and contains tests.
 :run_plugin: puppet
+:pre_plugin: rspec
+:post_plugin: rspec

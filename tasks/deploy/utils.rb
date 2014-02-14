@@ -1,5 +1,5 @@
 module Deploy
-  
+
   # different utility functions
   # should be static
   class Utils
@@ -11,29 +11,28 @@ module Deploy
       require 'rubygems'
       require 'rexml/document'
       include REXML
-  
+
       xml = REXML::Document.new xunit
       raise 'Could not parse file!' unless xml
-  
+
       text = ''
       testsuite = xml.root.elements['/testsuite']
       errors = testsuite.attributes['failures'].to_i
       testcases = xml.root.elements.to_a('testcase')
-  
+
       testcases.each do |tc|
         success = true
         message = ''
         failures = tc.elements.to_a('failure')
         if failures.any?
           success = false
-          message = failures.first.texts.join.gsub(/\s+/,' ')
+          message = failures.first.texts.join.gsub(/\s+/, ' ').strip
         end
-        text += "#{tc.attributes['name']} | #{success ? 'OK' : 'FAIL'} | #{message}\n"
+        text += "| #{success ? 'OK' : 'FAIL'} | #{tc.attributes['name']} #{message.empty? ? '' : '| ' + message}\n"
       end
-  
-      text += '-' * 20 + "\n"
-      text += "Errors: #{errors}\n"
-      return { :errors => errors, :text => text }
+
+      text += "Errors: #{errors}\n" if errors > 0
+      return {:errors => errors, :text => text}
     end
 
     # generate xunit xml from test cases structure
@@ -64,14 +63,14 @@ module Deploy
       xml += "</testsuite>\n"
       xml
     end
-  
+
     # this method parses json report to human readable form
     # @param json [String]
     # @return [String]
     def self.json_to_list(json)
       # TODO implement
       p json
-      return { :errors => 0, :text => '' }
+      return {:errors => 0, :text => ''}
     end
 
     # generate json from test cases structure
@@ -82,7 +81,7 @@ module Deploy
       p testcases
       return ''
     end
-  
+
     # print a line of the task list
     # @param task [Deploy::Task]
     # @param name_length [Numeric]
@@ -92,7 +91,7 @@ module Deploy
       line += task.comment.to_s if task.comment
       puts line unless line.empty?
     end
-  
+
     # print the entire list of tasks
     # @param tasks [Array<Deploy::Task>]
     def self.print_tasks_list(tasks)
@@ -114,7 +113,7 @@ module Deploy
     # convert hash's keys to symbols
     # @param hash [Hash]
     def self.symbolize_hash(hash)
-      hash.each do |k,v|
+      hash.each do |k, v|
         next if k.is_a? Symbol
         hash.delete k
         hash.store k.to_sym, v

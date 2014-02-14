@@ -1,0 +1,14 @@
+:comment: Check that OS is supported
+:description: Check if this system's OS and Architecture is supported ans SELinux is off
+:pre_plugin: rspec
+#:pre_params:
+#:pre_timeout:
+#:pre_autoreport:
+#:run_plugin:
+#:run_params:
+#:run_timeout:
+#:run_autoreport:
+#:post_plugin:
+#:post_params:
+#:post_timeout:
+#:post_autoreport:
