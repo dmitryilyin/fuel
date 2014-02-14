@@ -1,0 +1,8 @@
+:comment: Test long task
+:description: This task takes a lot of time to run
+:pre_plugin: exec
+:pre_params: pre.sh
+:run_plugin: exec
+:run_params: run.sh
+:post_plugin: exec
+:post_params: post.sh

@@ -13,7 +13,7 @@ module Deploy
       library_dir = Deploy::Config[:library_dir]
       raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
       task_dir = Deploy::Config[:task_dir]
-      raise "Base task directoru #{task_dir} does not exist!" unless task_dir and File.directory? task_dir
+      raise "Base task directory #{task_dir} does not exist!" unless task_dir and File.directory? task_dir
       report_dir = Deploy::Config[:report_dir]
       raise "Report directory #{report_dir} is not set!" unless report_dir
       task_file = Deploy::Config[:task_file]
@@ -123,7 +123,7 @@ module Deploy
     # @param action [Symbol]
     def report_read(action)
       file = report_file_path action
-      raise "No report file #{file}" unless File.exists? file
+      return report_missing action unless File.file? file
       File.read file
     end
 
@@ -215,6 +215,23 @@ module Deploy
       report_write Deploy::Utils.make_xunit(report), action
     end
 
+    # return report with failure
+    # telling that the report file for this
+    # action was not found
+    # @param action [Symbol]
+    # @return [String]
+    def report_missing(action)
+      report = {
+          :classname => self.class,
+          :name => "No #{action.to_s.capitalize} Report",
+          :failure => {
+              :message => "#{action.to_s.capitalize} report is missing!",
+              :text => "Execution of action #{action.to_s.capitalize} did not produce a report file!",
+          }
+      }
+      Deploy::Utils.make_xunit(report)
+    end
+
     # check if this task has pre-deploy test action
     def has_pre?
       !!pre_plugin
@@ -254,7 +271,7 @@ module Deploy
         return 0
       end
       Dir.chdir directory or raise "Could not cd to #{directory}"
-      exit_code = pre_plugin.start
+      exit_code = pre_plugin.call
       if metadata[:pre_autoreport]
         if exit_code == 0
           report_ok_action :pre
@@ -273,7 +290,7 @@ module Deploy
         return 0
       end
       Dir.chdir directory or raise "Could not cd to #{directory}"
-      exit_code = run_plugin.start
+      exit_code = run_plugin.call
       if metadata[:run_autoreport]
         if exit_code == 0
           report_ok_action :run
@@ -292,7 +309,7 @@ module Deploy
         return 0
       end
       Dir.chdir directory or raise "Could not cd to #{directory}"
-      exit_code = post_plugin.start
+      exit_code = post_plugin.call
       if metadata[:post_autoreport]
         if exit_code == 0
           report_ok_action :post

@@ -61,19 +61,21 @@ class Deploy::RSpecAction < Deploy::Action
       when 'text' then
         rspec_command += ' -f doc'
       else
-        raise "Report format #{report_format} is not supported!"
+        raise "Report format '#{report_format}' is not supported!"
     end
-    rspec_command + " --out \"#{report_file_path}\""
+    rspec_command + " --out '#{report_file_path}'"
   end
 
   # run the rspec test
   # @return[Fixnum]
-  def start
-    Deploy::Utils.debug "Start #{self.class} plugin with #{path} spec"
+  def call
+    Deploy::Utils.debug "Start #{self.class} with action '#{action.to_s}' and '#{path}' spec"
     unless exists?
       report_no
       return 0
     end
+    report_remove
+    ENV['LANG'] = 'C'
     system "#{rspec_command} #{path}"
     $CHILD_STATUS.exitstatus
   end

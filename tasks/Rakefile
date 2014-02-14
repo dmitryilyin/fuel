@@ -52,6 +52,7 @@ def make_task(directory)
       end
       if all_tasks.include? "#{name}:run"
         Rake::Task["#{name}:run"].invoke
+        raise "Run of task \"#{name}\" failed!" if task.fail? 'run'
       end
       if all_tasks.include? "#{name}:post"
         Rake::Task["#{name}:post"].invoke

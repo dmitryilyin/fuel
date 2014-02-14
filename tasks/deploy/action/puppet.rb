@@ -58,7 +58,7 @@ class Deploy::PuppetAction < Deploy::Action
         :name => 'Puppet Apply',
         :failure => {
             :message => 'Puppet Error',
-            :text => "Puppet manifest #{path} apply have failed!"
+            :text => "Puppet manifest '#{path}' apply have failed!"
         }
     }
     report_write Deploy::Utils.make_xunit report
@@ -68,17 +68,19 @@ class Deploy::PuppetAction < Deploy::Action
   # @return [String]
   def puppet_command
     puppet_command = 'puppet apply --detailed-exitcodes'
-    puppet_command += " --modulepath=\"#{Deploy::Config[:module_dir]}\"" if Deploy::Config[:module_dir]
+    puppet_command += " --modulepath='#{Deploy::Config[:module_dir]}'" if Deploy::Config[:module_dir]
     puppet_command + " #{Deploy::Config[:puppet_options]}" if Deploy::Config[:puppet_options]
   end
 
   # start the puppet run
   # @return[Fixnum]
-  def start
+  def call
+    Deploy::Utils.debug "Start #{self.class} with action '#{action.to_s}' and '#{path}' manifest"
     unless exists?
       report_no
       return 0
     end
+    report_remove
     system "#{puppet_command} #{path}"
     exit_code = $CHILD_STATUS.exitstatus
     if [0, 2].include? exit_code

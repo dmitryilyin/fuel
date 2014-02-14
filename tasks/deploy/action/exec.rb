@@ -64,7 +64,7 @@ class Deploy::ExecAction < Deploy::Action
         :name => 'Exec Run',
         :failure => {
             :message => 'Exec Failed',
-            :text => "Exec #{path} have failed!"
+            :text => "Exec '#{path}' have failed!"
         }
     }
     report_write Deploy::Utils.make_xunit report
@@ -72,13 +72,14 @@ class Deploy::ExecAction < Deploy::Action
 
   # run the exec action
   # @return [Fixnum]
-  def start
-    Deploy::Utils.debug "Start #{self.class} for action #{action.to_s} and file #{path}"
+  def call
+    Deploy::Utils.debug "Start #{self.class} with action '#{action.to_s}' and '#{path}' file"
     unless exists?
       report_no
       return 0
     end
     ensure_executable
+    report_remove
     system path
     exit_code = $CHILD_STATUS.exitstatus
     if exit_code == 0
