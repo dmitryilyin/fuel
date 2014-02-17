@@ -97,7 +97,7 @@ class corosync (
     owner   => '0',
     group   => '0',
     mode    => '0644',
-    before => Service["corosync"],
+    before => Service['corosync', 'pacemaker'],
   }
   
   
@@ -111,7 +111,7 @@ class corosync (
       mode   => '0400',
       owner  => 'root',
       group  => 'root',
-      notify => Service['corosync'],
+      notify => Service['corosync', 'pacemaker'],
     }
   }
   if $::operatingsystem == 'Ubuntu' {
@@ -120,7 +120,7 @@ class corosync (
          ensure  => "present",
          content => "manual",
          mode    => 644,
-         before  => Package[corosync],
+         before  => Package['corosync'],
       }
   }
   package { ['corosync', 'pacemaker']: ensure => present }
@@ -175,7 +175,7 @@ class corosync (
       path    => ['/bin', '/usr/bin'],
       unless  => 'grep START=yes /etc/default/corosync',
       require => Package['corosync'],
-      before  => Service['corosync'],
+      before  => Service['corosync', 'pacemaker'],
     }
     if $::operatingsystem == 'Ubuntu' {
       exec { 'rm_corosync_override':
@@ -193,7 +193,7 @@ class corosync (
       path    => ['/bin', '/usr/bin', '/sbin', '/usr/sbin'],
       onlyif  => "crm node status|grep ${::hostname}-standby|
       grep 'value=\"on\"'",
-      require => Service['corosync'],
+      require => Service['corosync', 'pacemaker'],
     }
   }
 
@@ -203,14 +203,25 @@ class corosync (
       path    => ['/bin', '/usr/bin', '/sbin', '/usr/sbin'],
       onlyif  => "crm node status|grep ${::hostname}-standby|
       grep 'value=\"on\"'",
-      require => Service['corosync'],
+      require => Service['corosync', 'pacemaker'],
     }
   }
 
   service { 'corosync':
     ensure    => running,
     enable    => true,
-    subscribe => File[['/etc/corosync/corosync.conf', '/etc/corosync/service.d']],
+    hasstatus  => true,
+    hasrestart => true,
+    subscribe => File['/etc/corosync/corosync.conf', '/etc/corosync/service.d'],
   }
+
+  service { 'pacemaker' :
+    ensure     => 'running',
+    enable     => true,
+    hasstatus  => true,
+    hasrestart => true,
+  }
+
+  Service['corosync'] ~> Service['pacemaker']
  
 }
