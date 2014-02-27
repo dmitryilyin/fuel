@@ -43,7 +43,7 @@ module MCollective
 
       action "last_run_summary" do
         last_run_summary
-        set_status
+        set_agent_status
       end
 
       action "enable" do
@@ -59,7 +59,7 @@ module MCollective
       end
 
       action "status" do
-        set_status
+        set_agent_status
       end
 
       private

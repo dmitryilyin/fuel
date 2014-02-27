@@ -1,7 +1,16 @@
 require 'rubygems'
 require 'find'
 require 'yaml'
-require 'deploy'
+$LOAD_PATH.unshift '/etc/puppet/tasks'
+require 'deploy/utils'
+require 'deploy/config'
+require 'deploy/task'
+require 'deploy/agent'
+require 'deploy/action'
+require 'deploy/action/puppet'
+require 'deploy/action/exec'
+require 'deploy/action/rspec'
+
 
 # create rake task and sub-tasks
 # @param directory [String]
@@ -113,7 +122,6 @@ end
 Dir.chdir Deploy::Config[:task_dir] or raise "Cannot change directory to #{Deploy::Config[:task_dir]}"
 
 Find.find(Deploy::Config[:library_dir]) do |path|
-  actions = %w(pre run post)
   next unless File.file? path and File.basename(path) == Deploy::Config[:task_file]
   directory = File.dirname path
   make_task directory

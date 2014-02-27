@@ -82,8 +82,8 @@ module Deploy
       return ''
     end
 
-    # print a line of the task list
-    # @param task [Deploy::Task]
+    # print a line of the Rake task or Deploy task
+    # @param task [Rake::Task,Deploy::Task]
     # @param name_length [Numeric]
     def self.print_task_line(task, name_length)
       line = ''
@@ -92,8 +92,8 @@ module Deploy
       puts line unless line.empty?
     end
 
-    # print the entire list of tasks
-    # @param tasks [Array<Deploy::Task>]
+    # print the entire list of Rake tasks or Deplot tesks
+    # @param tasks [Array<Rake::Task>,Array<Deploy::Task>]
     def self.print_tasks_list(tasks)
       raise 'Deploy list should be Array!' unless tasks.is_a? Array
       return nil unless tasks.any?
@@ -117,6 +117,29 @@ module Deploy
         next if k.is_a? Symbol
         hash.delete k
         hash.store k.to_sym, v
+      end
+    end
+
+    # get an array with all existing tasks
+    # @return [Array<Deploy::Task>]
+    def self.get_all_tasks
+      require 'find'
+      tasks = []
+      library_dir = Deploy::Config[:library_dir]
+      raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
+      Find.find(library_dir) do |path|
+        next unless File.file? path and File.basename(path) == Deploy::Config[:task_file]
+        directory = File.dirname path
+        task = Deploy::Task.new directory
+        tasks << task
+      end
+      tasks
+    end
+
+    # Print configuration in human readable form
+    def self.show_config
+      Deploy::Config.config.each do |k,v|
+        puts "#{k}='#{v}'"
       end
     end
 

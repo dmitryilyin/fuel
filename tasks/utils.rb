@@ -1,6 +1,13 @@
 #!/usr/bin/env ruby
 $LOAD_PATH.unshift '/etc/puppet/tasks'
-require 'deploy'
+require 'deploy/utils'
+require 'deploy/config'
+require 'deploy/task'
+require 'deploy/agent'
+require 'deploy/action'
+require 'deploy/action/puppet'
+require 'deploy/action/exec'
+require 'deploy/action/rspec'
 
 option = $ARGV[0]
 actions = %w(pre run post)

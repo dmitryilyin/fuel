@@ -25,8 +25,12 @@ module Deploy
       Deploy::Utils.debug "Created #{self.class} with name #{name} and directory #{directory}"
     end
 
-    # name of this task
-    # @return [String]
+    # @return [String] Convert this task to String
+    def to_s
+      "#{self.class}: #{name} at #{directory}"
+    end
+
+    # @return [String] Name of this task
     def name
       return @name if @name
       task_path = directory.clone
@@ -37,8 +41,7 @@ module Deploy
       @name = task_path
     end
 
-    # path to this task's directory
-    # @return [String]
+    # @return [String] Path to this task's directory
     def directory
       @directory
     end

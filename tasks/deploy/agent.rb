@@ -1,9 +1,12 @@
+require 'rubygems'
+
 module Deploy
 
   # Controlls the process of tasks execution, tests, daemonization, pids and logs #
   class Agent
+    # @param task_name [String] A name of task this agent should run
     def initialize(task_name)
-      set_title "agent: #{task_name} - init"
+      set_process_title "agent: #{task_name} - init"
       library_dir = Deploy::Config[:library_dir]
       raise "Library directory #{library_dir} does not exist!" unless library_dir and File.directory? library_dir
       task_dir = Deploy::Config[:task_dir]
@@ -20,54 +23,65 @@ module Deploy
       @daemonize = true
       task.set_plugins
       Deploy::Utils.debug "Created #{self.class} for task #{task.name}"
-      set_title "agent: #{task_name} - idle"
+      set_process_title "agent: #{task_name} - idle"
     end
 
+    # @return [Deploy::Task]
     attr_reader :task
+    # @return [String]
     attr_reader :task_name
+    # @return [TrueClass,FalseClass]
     attr_accessor :daemonize
 
+    # Execute the task of this agent
+    # @return [Numeric]
     def call
-      set_status 'pre'
+      set_agent_status 'pre'
       task.pre
       if task.fail? :pre
-        set_status 'pre failed'
+        set_agent_status 'pre failed'
         return 1
       end
-      set_status 'run'
+      set_agent_status 'run'
       task.run
       if task.fail? :run
-        set_status 'run failed'
+        set_agent_status 'run failed'
         return 2
       end
-      set_status 'post'
+      set_agent_status 'post'
       task.post
       if task.fail? :post
-        set_status 'post failed'
+        set_agent_status 'post failed'
         return 3
       end
-      set_status 'end'
+      set_agent_status 'end'
       0
     end
 
-    def set_status(status)
+    # Set this agent's status file and title
+    # @param status [String]
+    def set_agent_status(status)
       Deploy::Utils.debug "Agent task: #{task_name} status: #{status}"
-      set_title "agent: #{task_name} - #{status}"
+      set_process_title "agent: #{task_name} - #{status}"
       @status = status
       File.open status_file_path, 'w' do |f|
         f.write status
       end
     end
 
-    def set_title(title)
+    # set process name visible in ps and top
+    # @param title [String]
+    def set_process_title(title)
       $0 = title.to_s
     end
 
+    # get this agent's status from status file
+    # @return [String]
     def status
-      set_title "agent: #{task_name} - status"
+      set_process_title "agent: #{task_name} - status"
       return 'idle' unless has_status_file?
       status = File.read(status_file_path).chomp
-      set_title "agent: #{task_name} - idle"
+      set_process_title "agent: #{task_name} - idle"
       status
     end
 
@@ -79,10 +93,12 @@ module Deploy
       'status'
     end
 
+    # @return [String] Construct the title string for this process
     def process_title_string(status)
       "agent: #{task_name} - #{status.to_s}"
     end
 
+    # @return [Hash] A set of daemon options
     def daemon_option
       {
           :app_name => daemon_app_name,
@@ -99,24 +115,29 @@ module Deploy
       }
     end
 
+    # @return [TrueClass,FalseClass] Does the pid file exist?
     def has_pid_file?
-      File.exists? pid_file_path
+      File.exists? pid_file_path or File.exists? pid_file_path + '.pid'
     end
 
-    def read_pid_file
-      return nil unless has_pid_file?
-      File.read pid_file_path.chomp.to_i
+    # @return [Numeric,NilClass] Pid of the running agent from pid file if any
+    def pid
+      return File.read(pid_file_path).chomp.to_i if File.exists? pid_file_path
+      return File.read(pid_file_path + '.pid').chomp.to_i if File.exists? pid_file_path + '.pid'
+      nil
     end
 
+    # @return [TrueClass,FalseClass] Is the agent for this task running?
     def is_running?
       # TODO check if process with this pid exists and is ruby
       has_pid_file?
     end
 
-    def run_daemon
+    # Run the task in background as a separate daemon process
+    def run_background
       require 'daemons'
       if is_running?
-        return 1
+        raise "Already running task #{task_name} at pid #{pid} status #{status}!"
       end
 
       Daemons.call(daemon_option) do
@@ -126,16 +147,38 @@ module Deploy
       0
     end
 
+    # Run the task in foreground inside the current process
+    def run_foreground
+      if is_running?
+        raise "Already running task #{task_name} at pid #{pid} status #{status}!"
+      end
+      call
+    end
+
+    # run this agent's task either in background or in foreground
+    # depending on agent's settings
+    def run
+      if daemonize
+        run_background
+      else
+        run_foreground
+      end
+    end
+
+    # @return [String] Path to this taks's status file
     def status_file_path
       return @status_file_path if @status_file_path
       @status_file_path = File.join task_report_dir, status_file_name
     end
 
+    # @return [String] Path to this task's pid file
     def pid_file_path
       return @pid_file_path if @pid_file_path
       @pid_file_path =  File.join task_pid_dir, daemon_app_name
     end
 
+    # @return [String] Path to this task's report di
+    # Creates one if not present
     def task_report_dir
       return @task_report_dir if @task_report_dir
       @task_report_dir = File.join Deploy::Config[:report_dir], task_name
@@ -147,6 +190,8 @@ module Deploy
       @task_report_dir
     end
 
+    # @return [String] Path to this task's pid directory
+    # Creates on if not present
     def task_pid_dir
       return @task_pid_dir if @task_pid_dir
       @task_pid_dir = File.join Deploy::Config[:pid_dir], task_name
@@ -154,20 +199,24 @@ module Deploy
         require 'fileutils'
         FileUtils.mkdir_p @task_pid_dir
       end
-      raise "No report directory '#{@task_pid_dir}'!" unless File.directory? @task_pid_dir
+      raise "No pid directory '#{@task_pid_dir}'!" unless File.directory? @task_pid_dir
       @task_pid_dir
     end
 
+    # @return [TrueClass,FalseClass] Does the status file exist?
     def has_status_file?
       File.file? status_file_path
     end
 
+    # delete the status file
+    # do nothing if it does not exist
     def remove_status_file
       File.unlink status_file_path if File.file? status_file_path
     end
 
+    # @return [Hash<String>] Return three reports for pre, run and post actions
     def report
-      set_title "agent: #{task_name} - report"
+      set_process_title "agent: #{task_name} - report"
       pre_report = task.report_read :pre
       run_report = task.report_read :run
       post_report = task.report_read :post
@@ -176,14 +225,25 @@ module Deploy
           :run => run_report,
           :post => post_report,
       }
-      set_title "agent: #{task_name} - idle"
+      set_process_title "agent: #{task_name} - idle"
       report
     end
 
+    # return human readable report of all task's actions
+    # @return [String] Human readable report
+    def task_report_text
+      pre = Deploy::Utils.xunit_to_list(task.report_read(:pre))[:text]
+      run = Deploy::Utils.xunit_to_list(task.report_read(:run))[:text]
+      post = Deploy::Utils.xunit_to_list(task.report_read(:post))[:text]
+      "#{pre}\n#{run}\n#{post}"
+    end
+
+    # stop the current task if it's running
     def stop
-      set_title "agent: #{task_name} - stop"
-      # TODO implement
-      set_title "agent: #{task_name} - idle"
+      set_process_title "agent: #{task_name} - stop"
+      running_pid = pid
+      Process.kill 'TERM', running_pid if running_pid
+      set_process_title "agent: #{task_name} - idle"
     end
 
   end # class
