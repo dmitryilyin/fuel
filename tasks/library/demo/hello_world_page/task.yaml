@@ -1,0 +1,14 @@
+:comment: Create test page
+:description: Create a simple demo page
+:pre_plugin: rspec
+#:pre_params:
+#:pre_timeout:
+#:pre_autoreport:
+:run_plugin: puppet
+#:run_params:
+#:run_timeout:
+#:run_autoreport:
+:post_plugin: rspec
+#:post_params:
+#:post_timeout:
+#:post_autoreport:

@@ -26,14 +26,14 @@ def run(task)
   raise 'No task given!' unless task
   agent = Deploy::Agent.new task.to_s
   agent.daemonize = false
-  agent.run
+  exit agent.run
 end
 
 def daemon(task)
   raise 'No task given!' unless task
   agent = Deploy::Agent.new task.to_s
   agent.daemonize = true
-  agent.run
+  exit agent.run
 end
 
 def report(task)
@@ -57,45 +57,11 @@ def stop(task)
   raise 'No task given!' unless task
   agent = Deploy::Agent.new task.to_s
   if agent.is_running?
-    agent.stop
+    exit 0 if agent.stop
   else
     puts "Task #{task} is not running!"
   end
-end
-
-def listen
-  require 'sinatra'
-  require 'JSON'
-  set :port, 10000
-  set :bind, '0.0.0.0'
-
-  get "/" do
-    directory = File.dirname __FILE__
-    file = File.join directory, 'rest.html'
-    return 'No HTML file!' unless File.exists? file
-    File.read file
-  end
-
-  get '/task' do
-    tasks = Deploy::Utils.get_all_tasks
-    tasks = tasks.map { |t| { 'task' => t.name } }
-    JSON.dump({ 'data' => tasks, 'success' => true})
-  end
-
-  post '/task/:name' do
-    task = params[:name]
-    agent = Deploy::Agent.new task.to_s
-    agent.daemonize = true
-    code = agent.run_foreground
-    report = agent.task_report_text
-    if code == 0
-      return JSON.dump({ 'success' => true, 'report' => report })
-    else
-      return JSON.dump({ 'success' => false, 'report' => report })
-    end
-  end
-
-
+  exit 1
 end
 
 #####################
@@ -112,6 +78,5 @@ case action
   when 'status' then status task
   when 'stop'   then stop task
   when 'config' then Deploy::Utils.show_config
-  when 'listen' then listen
   else raise "Unknown action: #{action}!"
 end

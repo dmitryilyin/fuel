@@ -7,9 +7,11 @@
 </head>
 <body>
 <script>
+    logdata = '';
+
     task_store = Ext.create('Ext.data.Store', {
         autoLoad: true,
-        fields: ['task'],
+        fields: ['task', 'comment'],
         proxy: {
             type: 'ajax',
             url: '/task',
@@ -19,7 +21,7 @@
                 successProperty: 'success'
             }
         }
-    })
+    });
 
     run_task = function (name) {
         Ext.Ajax.request({
@@ -28,14 +30,66 @@
             success: function (response, opts) {
                 var obj = Ext.decode(response.responseText);
                 var log = Ext.getCmp('log');
-                log.body.update(obj.report.replace(/\n/g, '<br />'));
+                logdata = logdata + '<br />' + obj.report;
+                log.body.update(logdata.replace(/\n/g, '<br />'));
             },
             failure: function (response, opts) {
                 var obj = Ext.decode(response.responseText);
                 console.error(obj);
             }
         });
-    }
+    };
+
+    task_status = function (name) {
+        Ext.Ajax.request({
+            url: '/task/' + name,
+            method: 'GET',
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                var log = Ext.getCmp('log');
+                logdata = logdata + '<br />' + 'Status: ' + obj.status + ' PID: ' + obj.pid;
+                log.body.update(logdata.replace(/\n/g, '<br />'));
+            },
+            failure: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                console.error(obj);
+            }
+        });
+    };
+
+    stop_task = function (name) {
+        Ext.Ajax.request({
+            url: '/task/' + name,
+            method: 'DELETE',
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                var log = Ext.getCmp('log');
+                logdata = logdata + '<br />' + obj.report;
+                log.body.update(logdata.replace(/\n/g, '<br />'));
+            },
+            failure: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                console.error(obj);
+            }
+        });
+    };
+
+    task_report = function (name) {
+        Ext.Ajax.request({
+            url: '/task/' + name,
+            method: 'PUT',
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                var log = Ext.getCmp('log');
+                logdata = logdata + '<br />' + obj.report;
+                log.body.update(logdata.replace(/\n/g, '<br />'));
+            },
+            failure: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                console.error(obj);
+            }
+        });
+    };
 
     Ext.define('RestTask.view.Run', {
         extend: 'Ext.Button',
@@ -58,7 +112,14 @@
         alias: 'widget.status',
         text: 'Task Status',
         handler: function () {
-            alert('You clicked the button!');
+            var grid = Ext.getCmp('tasks');
+            var selection = grid.getSelectionModel().getSelection();
+            if (selection.length > 0) {
+                task = selection[0].data.task;
+                if (task) {
+                    task_status(task);
+                }
+            }
         }
     });
 
@@ -67,7 +128,41 @@
         alias: 'widget.stop',
         text: 'Stop Task',
         handler: function () {
-            alert('You clicked the button!');
+            var grid = Ext.getCmp('tasks');
+            var selection = grid.getSelectionModel().getSelection();
+            if (selection.length > 0) {
+                task = selection[0].data.task;
+                if (task) {
+                    stop_task(task);
+                }
+            }
+        }
+    });
+
+    Ext.define('RestTask.view.Clear', {
+        extend: 'Ext.Button',
+        alias: 'widget.clear',
+        text: 'Clear Log',
+        handler: function () {
+            logdata = '';
+            var log = Ext.getCmp('log');
+            log.body.update(logdata);
+        }
+    });
+
+    Ext.define('RestTask.view.Report', {
+        extend: 'Ext.Button',
+        alias: 'widget.report',
+        text: 'Task Report',
+        handler: function () {
+            var grid = Ext.getCmp('tasks');
+            var selection = grid.getSelectionModel().getSelection();
+            if (selection.length > 0) {
+                task = selection[0].data.task;
+                if (task) {
+                    task_report(task);
+                }
+            }
         }
     });
 
@@ -90,6 +185,10 @@
             text: 'Task Name',
             dataIndex: 'task',
             flex: 1
+        },{
+            text: 'Task Comment',
+            dataIndex: 'comment',
+            flex: 1
         }]
     });
 
@@ -104,31 +203,35 @@
                         xtype: 'tasks',
                         title: 'REST Deployment Task',
                         height: 200,
-                        width: 400
+                        width: 500
                     },
                     {
                         xtype: 'panel',
                         layout: 'hbox',
                         height: 30,
-                        width: 400,
+                        width: 500,
                         defaults: {
                           flex: 1,
                           height: 30
                         },
                         items: [
                             {
-                                xtype: 'run',
+                                xtype: 'run'
                             },
                             {
-                                xtype: 'stop',
-                                disabled: true
+                                xtype: 'stop'
                             },
                             {
-                                xtype: 'status',
-                                disabled: true
+                                xtype: 'status'
                             },
                             {
                                 xtype: 'list'
+                            },
+                            {
+                                xtype: 'clear'
+                            },
+                            {
+                                xtype: 'report'
                             }
                         ]
                     },
@@ -138,7 +241,7 @@
                         collapsible: true,
                         flex: 1,
                         title: 'log',
-                        width: 400
+                        width: 500
                     }
             ]
         });

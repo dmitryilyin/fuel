@@ -117,14 +117,13 @@ module Deploy
 
     # @return [TrueClass,FalseClass] Does the pid file exist?
     def has_pid_file?
-      File.exists? pid_file_path or File.exists? pid_file_path + '.pid'
+      File.exists? pid_file_path
     end
 
     # @return [Numeric,NilClass] Pid of the running agent from pid file if any
     def pid
-      return File.read(pid_file_path).chomp.to_i if File.exists? pid_file_path
-      return File.read(pid_file_path + '.pid').chomp.to_i if File.exists? pid_file_path + '.pid'
-      nil
+      return nil unless File.exists? pid_file_path
+      File.read(pid_file_path).chomp.to_i
     end
 
     # @return [TrueClass,FalseClass] Is the agent for this task running?
@@ -176,7 +175,7 @@ module Deploy
     # @return [String] Path to this task's pid file
     def pid_file_path
       return @pid_file_path if @pid_file_path
-      @pid_file_path =  File.join task_pid_dir, daemon_app_name
+      @pid_file_path =  File.join task_pid_dir, daemon_app_name + '.pid'
     end
 
     # @return [String] Path to this task's report di
@@ -244,8 +243,14 @@ module Deploy
     def stop
       set_process_title "agent: #{task_name} - stop"
       running_pid = pid
-      Process.kill 'TERM', running_pid if running_pid
+      begin
+        Process.kill 'TERM', running_pid if running_pid
+        success = true
+      rescue
+        success = false
+      end
       set_process_title "agent: #{task_name} - idle"
+      success
     end
 
   end # class
