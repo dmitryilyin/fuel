@@ -1,0 +1,150 @@
+<!doctype html>
+<head>
+    <meta charset="utf-8">
+    <title>Task REST test</title>
+    <link href="http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css" rel="stylesheet"/>
+    <script src="http://cdn.sencha.com/ext/gpl/4.2.0/ext-all.js"></script>
+</head>
+<body>
+<script>
+    task_store = Ext.create('Ext.data.Store', {
+        autoLoad: true,
+        fields: ['task'],
+        proxy: {
+            type: 'ajax',
+            url: '/task',
+            reader: {
+                type: 'json',
+                root: 'data',
+                successProperty: 'success'
+            }
+        }
+    })
+
+    run_task = function (name) {
+        Ext.Ajax.request({
+            url: '/task/' + name,
+            method: 'POST',
+            success: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                var log = Ext.getCmp('log');
+                log.body.update(obj.report.replace(/\n/g, '<br />'));
+            },
+            failure: function (response, opts) {
+                var obj = Ext.decode(response.responseText);
+                console.error(obj);
+            }
+        });
+    }
+
+    Ext.define('RestTask.view.Run', {
+        extend: 'Ext.Button',
+        alias: 'widget.run',
+        text: 'Run Task',
+        handler: function () {
+            var grid = Ext.getCmp('tasks');
+            var selection = grid.getSelectionModel().getSelection();
+            if (selection.length > 0) {
+                task = selection[0].data.task;
+                if (task) {
+                    run_task(task);
+                }
+            }
+        }
+    });
+
+    Ext.define('RestTask.view.Status', {
+        extend: 'Ext.Button',
+        alias: 'widget.status',
+        text: 'Task Status',
+        handler: function () {
+            alert('You clicked the button!');
+        }
+    });
+
+    Ext.define('RestTask.view.Stop', {
+        extend: 'Ext.Button',
+        alias: 'widget.stop',
+        text: 'Stop Task',
+        handler: function () {
+            alert('You clicked the button!');
+        }
+    });
+
+    Ext.define('RestTask.view.List', {
+        extend: 'Ext.Button',
+        alias: 'widget.list',
+        text: 'List Tasks',
+        handler: function () {
+            task_store.reload();
+        }
+    });
+
+    Ext.define('RestTask.view.Tasks', {
+        extend: 'Ext.grid.Panel',
+        alias: 'widget.tasks',
+        id: 'tasks',
+        store: task_store,
+        forceFit: true,
+        columns: [{
+            text: 'Task Name',
+            dataIndex: 'task',
+            flex: 1
+        }]
+    });
+
+    Ext.application({
+        name: "RestTask",
+        appFolder: "app",
+        launch: function () {
+            Ext.create('Ext.container.Viewport', {
+                layout: 'vbox',
+                items: [
+                    {
+                        xtype: 'tasks',
+                        title: 'REST Deployment Task',
+                        height: 200,
+                        width: 400
+                    },
+                    {
+                        xtype: 'panel',
+                        layout: 'hbox',
+                        height: 30,
+                        width: 400,
+                        defaults: {
+                          flex: 1,
+                          height: 30
+                        },
+                        items: [
+                            {
+                                xtype: 'run',
+                            },
+                            {
+                                xtype: 'stop',
+                                disabled: true
+                            },
+                            {
+                                xtype: 'status',
+                                disabled: true
+                            },
+                            {
+                                xtype: 'list'
+                            }
+                        ]
+                    },
+                    {
+                        xtype: 'panel',
+                        id: 'log',
+                        collapsible: true,
+                        flex: 1,
+                        title: 'log',
+                        width: 400
+                    }
+            ]
+        });
+    }
+    })
+    ;
+</script>
+</body>
+</html>

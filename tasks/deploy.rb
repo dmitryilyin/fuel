@@ -63,6 +63,43 @@ def stop(task)
   end
 end
 
+def listen
+  require 'sinatra'
+  require 'JSON'
+  set :port, 10000
+  set :bind, '0.0.0.0'
+
+  get "/" do
+    directory = File.dirname __FILE__
+    file = File.join directory, 'rest.html'
+    return 'No HTML file!' unless File.exists? file
+    File.read file
+  end
+
+  get '/task' do
+    tasks = Deploy::Utils.get_all_tasks
+    tasks = tasks.map { |t| { 'task' => t.name } }
+    JSON.dump({ 'data' => tasks, 'success' => true})
+  end
+
+  post '/task/:name' do
+    task = params[:name]
+    agent = Deploy::Agent.new task.to_s
+    agent.daemonize = true
+    code = agent.run_foreground
+    report = agent.task_report_text
+    if code == 0
+      return JSON.dump({ 'success' => true, 'report' => report })
+    else
+      return JSON.dump({ 'success' => false, 'report' => report })
+    end
+  end
+
+
+end
+
+#####################
+
 case action
   when 'list' then list
   when 'run'  then run task
@@ -75,5 +112,6 @@ case action
   when 'status' then status task
   when 'stop'   then stop task
   when 'config' then Deploy::Utils.show_config
+  when 'listen' then listen
   else raise "Unknown action: #{action}!"
 end

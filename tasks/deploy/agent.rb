@@ -137,7 +137,8 @@ module Deploy
     def run_background
       require 'daemons'
       if is_running?
-        raise "Already running task #{task_name} at pid #{pid} status #{status}!"
+        Deploy::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
+        return 1
       end
 
       Daemons.call(daemon_option) do
@@ -150,7 +151,8 @@ module Deploy
     # Run the task in foreground inside the current process
     def run_foreground
       if is_running?
-        raise "Already running task #{task_name} at pid #{pid} status #{status}!"
+        Deploy::Utils.debug "Already running task #{task_name} at pid #{pid} status #{status}!"
+        return 1
       end
       call
     end

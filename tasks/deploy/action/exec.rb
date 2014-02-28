@@ -41,7 +41,7 @@ class Deploy::ExecAction < Deploy::Action
   def report_no
     report = {
         :classname => self.class,
-        :name => 'No Exec',
+        :name => "No #{action} Exec",
     }
     report_write Deploy::Utils.make_xunit report
   end
@@ -51,7 +51,7 @@ class Deploy::ExecAction < Deploy::Action
   def report_ok
     report = {
         :classname => self.class,
-        :name => 'Exec Run',
+        :name => "Exec #{action}",
     }
     report_write Deploy::Utils.make_xunit report
   end
@@ -61,9 +61,9 @@ class Deploy::ExecAction < Deploy::Action
   def report_fail
     report = {
         :classname => self.class,
-        :name => 'Exec Run',
+        :name => "Exec #{action}",
         :failure => {
-            :message => 'Exec Failed',
+            :message => "Exec #{action} Failed",
             :text => "Exec '#{path}' have failed!"
         }
     }
