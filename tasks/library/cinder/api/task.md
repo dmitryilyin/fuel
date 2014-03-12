@@ -1,1 +1,0 @@
-Install Cinder API service

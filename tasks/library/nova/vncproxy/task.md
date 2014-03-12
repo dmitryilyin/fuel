@@ -1,1 +1,0 @@
-Install Nova Vncproxy service

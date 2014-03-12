@@ -1,1 +1,0 @@
-Install Cinder scheduler service

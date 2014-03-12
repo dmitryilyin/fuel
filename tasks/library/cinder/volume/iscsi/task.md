@@ -1,1 +1,0 @@
-Install Cinder Volume service with iSCSI support
