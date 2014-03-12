@@ -7,247 +7,273 @@
 </head>
 <body>
 <script>
-    logdata = '';
+logdata = '';
 
-    task_store = Ext.create('Ext.data.Store', {
-        autoLoad: true,
-        fields: ['task', 'comment'],
-        proxy: {
-            type: 'ajax',
-            url: '/task',
-            reader: {
-                type: 'json',
-                root: 'data',
-                successProperty: 'success'
-            }
+task_store = Ext.create('Ext.data.Store', {
+    autoLoad: true,
+    fields: ['task', 'comment'],
+    proxy: {
+        type: 'ajax',
+        url: '/task',
+        reader: {
+            type: 'json',
+            root: 'data',
+            successProperty: 'success'
         }
-    });
+    }
+});
 
-    run_task = function (name) {
-        Ext.Ajax.request({
-            url: '/task/' + name,
-            method: 'POST',
-            success: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                var log = Ext.getCmp('log');
-                logdata = logdata + '<br />' + obj.report;
-                log.body.update(logdata.replace(/\n/g, '<br />'));
-            },
-            failure: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                console.error(obj);
-            }
-        });
-    };
-
-    task_status = function (name) {
-        Ext.Ajax.request({
-            url: '/task/' + name,
-            method: 'GET',
-            success: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                var log = Ext.getCmp('log');
-                logdata = logdata + '<br />' + 'Status: ' + obj.status + ' PID: ' + obj.pid;
-                log.body.update(logdata.replace(/\n/g, '<br />'));
-            },
-            failure: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                console.error(obj);
-            }
-        });
-    };
-
-    stop_task = function (name) {
-        Ext.Ajax.request({
-            url: '/task/' + name,
-            method: 'DELETE',
-            success: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                var log = Ext.getCmp('log');
-                logdata = logdata + '<br />' + obj.report;
-                log.body.update(logdata.replace(/\n/g, '<br />'));
-            },
-            failure: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                console.error(obj);
-            }
-        });
-    };
-
-    task_report = function (name) {
-        Ext.Ajax.request({
-            url: '/task/' + name,
-            method: 'PUT',
-            success: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                var log = Ext.getCmp('log');
-                logdata = logdata + '<br />' + obj.report;
-                log.body.update(logdata.replace(/\n/g, '<br />'));
-            },
-            failure: function (response, opts) {
-                var obj = Ext.decode(response.responseText);
-                console.error(obj);
-            }
-        });
-    };
-
-    Ext.define('RestTask.view.Run', {
-        extend: 'Ext.Button',
-        alias: 'widget.run',
-        text: 'Run Task',
-        handler: function () {
-            var grid = Ext.getCmp('tasks');
-            var selection = grid.getSelectionModel().getSelection();
-            if (selection.length > 0) {
-                task = selection[0].data.task;
-                if (task) {
-                    run_task(task);
-                }
-            }
-        }
-    });
-
-    Ext.define('RestTask.view.Status', {
-        extend: 'Ext.Button',
-        alias: 'widget.status',
-        text: 'Task Status',
-        handler: function () {
-            var grid = Ext.getCmp('tasks');
-            var selection = grid.getSelectionModel().getSelection();
-            if (selection.length > 0) {
-                task = selection[0].data.task;
-                if (task) {
-                    task_status(task);
-                }
-            }
-        }
-    });
-
-    Ext.define('RestTask.view.Stop', {
-        extend: 'Ext.Button',
-        alias: 'widget.stop',
-        text: 'Stop Task',
-        handler: function () {
-            var grid = Ext.getCmp('tasks');
-            var selection = grid.getSelectionModel().getSelection();
-            if (selection.length > 0) {
-                task = selection[0].data.task;
-                if (task) {
-                    stop_task(task);
-                }
-            }
-        }
-    });
-
-    Ext.define('RestTask.view.Clear', {
-        extend: 'Ext.Button',
-        alias: 'widget.clear',
-        text: 'Clear Log',
-        handler: function () {
-            logdata = '';
+run_task = function (name) {
+    Ext.Ajax.request({
+        url: '/task/' + name,
+        method: 'POST',
+        success: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
             var log = Ext.getCmp('log');
-            log.body.update(logdata);
+            logdata = logdata + '<br />' + obj.report;
+            log.body.update(logdata.replace(/\n/g, '<br />'));
+        },
+        failure: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            console.error(obj);
         }
     });
+};
 
-    Ext.define('RestTask.view.Report', {
-        extend: 'Ext.Button',
-        alias: 'widget.report',
-        text: 'Task Report',
-        handler: function () {
-            var grid = Ext.getCmp('tasks');
-            var selection = grid.getSelectionModel().getSelection();
-            if (selection.length > 0) {
-                task = selection[0].data.task;
-                if (task) {
-                    task_report(task);
-                }
+task_status = function (name) {
+    Ext.Ajax.request({
+        url: '/task/' + name,
+        method: 'GET',
+        success: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            var log = Ext.getCmp('log');
+            logdata = logdata + '<br />' + 'Status: ' + obj.status + ' PID: ' + obj.pid;
+            log.body.update(logdata.replace(/\n/g, '<br />'));
+        },
+        failure: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            console.error(obj);
+        }
+    });
+};
+
+stop_task = function (name) {
+    Ext.Ajax.request({
+        url: '/task/' + name,
+        method: 'DELETE',
+        success: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            var log = Ext.getCmp('log');
+            logdata = logdata + '<br />' + obj.report;
+            log.body.update(logdata.replace(/\n/g, '<br />'));
+        },
+        failure: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            console.error(obj);
+        }
+    });
+};
+
+task_report = function (name) {
+    Ext.Ajax.request({
+        url: '/task/' + name,
+        method: 'PUT',
+        success: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            var log = Ext.getCmp('log');
+            logdata = logdata + '<br />' + obj.report;
+            log.body.update(logdata.replace(/\n/g, '<br />'));
+        },
+        failure: function (response, opts) {
+            var obj = Ext.decode(response.responseText);
+            console.error(obj);
+        }
+    });
+};
+
+Ext.define('RestTask.view.Run', {
+    extend: 'Ext.Button',
+    alias: 'widget.run',
+    text: 'Run Task',
+    handler: function () {
+        var grid = Ext.getCmp('tasks');
+        var selection = grid.getSelectionModel().getSelection();
+        if (selection.length > 0) {
+            task = selection[0].data.task;
+            if (task) {
+                run_task(task);
             }
         }
-    });
+    }
+});
 
-    Ext.define('RestTask.view.List', {
-        extend: 'Ext.Button',
-        alias: 'widget.list',
-        text: 'List Tasks',
-        handler: function () {
-            task_store.reload();
+Ext.define('RestTask.view.Status', {
+    extend: 'Ext.Button',
+    alias: 'widget.status',
+    text: 'Task Status',
+    handler: function () {
+        var grid = Ext.getCmp('tasks');
+        var selection = grid.getSelectionModel().getSelection();
+        if (selection.length > 0) {
+            task = selection[0].data.task;
+            if (task) {
+                task_status(task);
+            }
         }
-    });
+    }
+});
 
-    Ext.define('RestTask.view.Tasks', {
-        extend: 'Ext.grid.Panel',
-        alias: 'widget.tasks',
-        id: 'tasks',
-        store: task_store,
-        forceFit: true,
-        columns: [{
+Ext.define('RestTask.view.Stop', {
+    extend: 'Ext.Button',
+    alias: 'widget.stop',
+    text: 'Stop Task',
+    handler: function () {
+        var grid = Ext.getCmp('tasks');
+        var selection = grid.getSelectionModel().getSelection();
+        if (selection.length > 0) {
+            task = selection[0].data.task;
+            if (task) {
+                stop_task(task);
+            }
+        }
+    }
+});
+
+Ext.define('RestTask.view.Clear', {
+    extend: 'Ext.Button',
+    alias: 'widget.clear',
+    text: 'Clear Log',
+    handler: function () {
+        logdata = '';
+        var log = Ext.getCmp('log');
+        log.body.update(logdata);
+    }
+});
+
+Ext.define('RestTask.view.Report', {
+    extend: 'Ext.Button',
+    alias: 'widget.report',
+    text: 'Task Report',
+    handler: function () {
+        var grid = Ext.getCmp('tasks');
+        var selection = grid.getSelectionModel().getSelection();
+        if (selection.length > 0) {
+            task = selection[0].data.task;
+            if (task) {
+                task_report(task);
+            }
+        }
+    }
+});
+
+Ext.define('RestTask.view.List', {
+    extend: 'Ext.Button',
+    alias: 'widget.list',
+    text: 'List Tasks',
+    handler: function () {
+        task_store.reload();
+    }
+});
+
+Ext.define('RestTask.view.Tasks', {
+    extend: 'Ext.grid.Panel',
+    alias: 'widget.tasks',
+    id: 'tasks',
+    store: task_store,
+    forceFit: true,
+    columns: [
+        {
             text: 'Task Name',
             dataIndex: 'task',
             flex: 1
-        },{
+        },
+        {
             text: 'Task Comment',
             dataIndex: 'comment',
-            flex: 1
-        }]
-    });
+            flex: 3
+        }
+    ]
+});
 
-    Ext.application({
-        name: "RestTask",
-        appFolder: "app",
-        launch: function () {
-            Ext.create('Ext.container.Viewport', {
-                layout: 'vbox',
-                items: [
-                    {
-                        xtype: 'tasks',
-                        title: 'REST Deployment Task',
-                        height: 200,
-                        width: 500
+Ext.application({
+    name: "RestTask",
+    appFolder: "app",
+    launch: function () {
+        Ext.create('Ext.container.Viewport', {
+            layout: 'border',
+            defaults: {
+                collapsible: false
+            },
+            items: [
+                {
+                    id: 'task_controls',
+                    region: 'center',
+                    width: '100%',
+                    layout: {
+                        type: 'vbox',
+                        align: 'stretch',
+                        pack: 'start'
                     },
-                    {
-                        xtype: 'panel',
-                        layout: 'hbox',
-                        height: 30,
-                        width: 500,
-                        defaults: {
-                          flex: 1,
-                          height: 30
+                    items: [
+                        {
+                            xtype: 'tasks',
+                            flex: 1,
+                            title: 'REST Deployment Task'
                         },
-                        items: [
-                            {
-                                xtype: 'run'
+                        {
+                            region: 'center',
+                            layout: 'hbox',
+                            id: 'buttons',
+                            height: 30,
+                            flex: 1,
+                            maxHeight: 30,
+                            defaults: {
+                                flex: 1,
+                                height: 30
                             },
-                            {
-                                xtype: 'stop'
-                            },
-                            {
-                                xtype: 'status'
-                            },
-                            {
-                                xtype: 'list'
-                            },
-                            {
-                                xtype: 'clear'
-                            },
-                            {
-                                xtype: 'report'
-                            }
-                        ]
-                    },
-                    {
-                        xtype: 'panel',
-                        id: 'log',
-                        collapsible: true,
-                        flex: 1,
-                        title: 'log',
-                        width: 500
-                    }
+                            items: [
+                                {
+                                    xtype: 'run'
+                                },
+                                {
+                                    xtype: 'stop'
+                                },
+                                {
+                                    xtype: 'status'
+                                },
+                                {
+                                    xtype: 'list'
+                                },
+                                {
+                                    xtype: 'clear'
+                                },
+                                {
+                                    xtype: 'report'
+                                }
+                            ]
+                        },
+                    ]
+                },
+                {
+                    id: 'log',
+                    region: 'south',
+                    title: 'Log',
+                    height: '50%',
+                    collapsible: true
+                },
+                {
+                    title: 'Presets',
+                    region: 'east',
+                    width: 300,
+                    collapsible: true,
+                    collapsed: true,
+                    html: '<ol><li>checks::support</li><li>checks::settings</li><li>network::nova</li><li>network::hosts</li><li>mysql::simple</li><li>keystone::db::mysql</li><li>keystone::install</li><li>keystone::admin_role</li><li>keystone::endpoint</li><li>rabbitmq::install</li><li>rabbitmq::users</li><li>cinder::db::mysql</li><li>cinder::base</li><li>cinder::volume::iscsi</li><li>cinder::api</li><li>cinder::scheduler</li><li>nova::db::mysql</li><li>nova::keystone::auth</li><li>nova::common</li><li>nova::api</li><li>nova::cert</li><li>nova::conductor</li><li>nova::consoleauth</li><li>nova::objectstore</li><li>nova::scheduler</li><li>nova::vncproxy</li><li>nova::network</li><li>memcached</li><li>horizon</li><li>controller::auth_file</li><li>controller::api_proxy</li></ol>'
+                }
             ]
         });
     }
-    })
-    ;
+})
+;
 </script>
 </body>
 </html>
