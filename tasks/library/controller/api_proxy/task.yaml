@@ -1,5 +1,5 @@
 :comment: Configure Apache vhost as proxy server.
-#:pre_plugin:
+:pre_plugin: rspec
 #:pre_params:
 #:pre_timeout:
 #:pre_autoreport:
@@ -7,7 +7,7 @@
 #:run_params:
 #:run_timeout:
 #:run_autoreport:
-#:post_plugin:
+:post_plugin: rspec
 #:post_params:
 #:post_timeout:
 #:post_autoreport:
