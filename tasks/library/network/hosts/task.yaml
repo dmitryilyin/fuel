@@ -1,0 +1,13 @@
+:comment: Create /etc/hosts records for every cluster node
+#:pre_plugin:
+#:pre_params:
+#:pre_timeout:
+#:pre_autoreport:
+:run_plugin: puppet
+#:run_params:
+#:run_timeout:
+#:run_autoreport:
+#:post_plugin:
+#:post_params:
+#:post_timeout:
+#:post_autoreport:
