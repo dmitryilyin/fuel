@@ -73,5 +73,6 @@ get '/task/:name' do
   agent = Deploy::Agent.new task.to_s
   status = agent.status
   pid = agent.pid
+  pid = 'Not running' unless pid
   JSON.dump({ 'pid' => pid, 'status' => status })
 end

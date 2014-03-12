@@ -140,10 +140,10 @@ module Deploy
         return 1
       end
 
-      Daemons.call(daemon_option) do
+      app = Daemons.call(daemon_option) do
         call
       end
-
+      return 1 unless app
       0
     end
 

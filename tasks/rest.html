@@ -1,7 +1,7 @@
 <!doctype html>
 <head>
     <meta charset="utf-8">
-    <title>Task REST test</title>
+    <title>Task Deployment Interface</title>
     <link href="http://cdn.sencha.com/ext/gpl/4.2.0/resources/css/ext-all.css" rel="stylesheet"/>
     <script src="http://cdn.sencha.com/ext/gpl/4.2.0/ext-all.js"></script>
 </head>
@@ -47,7 +47,7 @@ task_status = function (name) {
         success: function (response, opts) {
             var obj = Ext.decode(response.responseText);
             var log = Ext.getCmp('log');
-            logdata = logdata + '<br />' + 'Status: ' + obj.status + ' PID: ' + obj.pid;
+            logdata = logdata + '<br />' + 'Task: ' + name + ' Status: ' + obj.status + ' PID: ' + obj.pid;
             log.body.update(logdata.replace(/\n/g, '<br />'));
         },
         failure: function (response, opts) {
@@ -202,7 +202,8 @@ Ext.application({
         Ext.create('Ext.container.Viewport', {
             layout: 'border',
             defaults: {
-                collapsible: false
+                collapsible: false,
+                split: true
             },
             items: [
                 {
@@ -259,6 +260,7 @@ Ext.application({
                     region: 'south',
                     title: 'Log',
                     height: '50%',
+                    autoScroll: true,
                     collapsible: true
                 },
                 {
@@ -267,6 +269,7 @@ Ext.application({
                     width: 300,
                     collapsible: true,
                     collapsed: true,
+                    // hardcoded for now...
                     html: '<ol><li>checks::support</li><li>checks::settings</li><li>network::nova</li><li>network::hosts</li><li>mysql::simple</li><li>keystone::db::mysql</li><li>keystone::install</li><li>keystone::admin_role</li><li>keystone::endpoint</li><li>rabbitmq::install</li><li>rabbitmq::users</li><li>cinder::db::mysql</li><li>cinder::base</li><li>cinder::volume::iscsi</li><li>cinder::api</li><li>cinder::scheduler</li><li>nova::db::mysql</li><li>nova::keystone::auth</li><li>nova::common</li><li>nova::api</li><li>nova::cert</li><li>nova::conductor</li><li>nova::consoleauth</li><li>nova::objectstore</li><li>nova::scheduler</li><li>nova::vncproxy</li><li>nova::network</li><li>memcached</li><li>horizon</li><li>controller::auth_file</li><li>controller::api_proxy</li></ol>'
                 }
             ]
