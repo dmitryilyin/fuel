@@ -113,7 +113,7 @@ module Deploy
     # convert hash's keys to symbols
     # @param hash [Hash]
     def self.symbolize_hash(hash)
-      hash.each do |k, v|
+      hash.dup.each do |k, v|
         next if k.is_a? Symbol
         hash.delete k
         hash.store k.to_sym, v
