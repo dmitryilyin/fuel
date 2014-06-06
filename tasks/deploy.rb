@@ -36,6 +36,15 @@ def daemon(task)
   exit agent.run
 end
 
+def runrep(task)
+  raise 'No task given!' unless task
+  agent = Deploy::Agent.new task.to_s
+  agent.daemonize = false
+  code = agent.run
+  puts agent.task_report_text  
+  exit code
+end
+
 def report(task)
   raise 'No task given!' unless task
   agent = Deploy::Agent.new task.to_s
@@ -69,10 +78,7 @@ end
 case action
   when 'list' then list
   when 'run'  then run task
-  when 'runrep' then begin
-    run task
-    report task
-  end
+  when 'runrep' then runrep task
   when 'daemon' then daemon task
   when 'report' then report task
   when 'status' then status task
