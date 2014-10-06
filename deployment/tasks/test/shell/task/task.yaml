@@ -1,0 +1,5 @@
+---
+comment: A simple test task that does nothing
+description: This tasks just sleeps for a few seconds and echoes messages
+type: exec
+cmd: 'echo "Test task start" && echo "Task dir: " && pwd && sleep 3 && echo "Test task end"'

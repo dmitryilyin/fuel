@@ -1,0 +1,4 @@
+---
+comment: Puppet Fail by Syntax error
+description: A task to test Puppet apply fail caused by a syntax error in the manifest
+type: puppet

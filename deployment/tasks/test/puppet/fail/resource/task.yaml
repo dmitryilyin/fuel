@@ -1,0 +1,4 @@
+---
+comment: Puppet Fail by Resource evaluation
+description: A task to test Puppet apply fail caused by a resource that could not be evaluated
+type: puppet

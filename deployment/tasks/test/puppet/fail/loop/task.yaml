@@ -1,0 +1,4 @@
+---
+comment: Puppet Fail by Dependency Loop
+description: A task to test Puppet catalog dependency loop fail
+type: puppet

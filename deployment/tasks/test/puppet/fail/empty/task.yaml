@@ -1,0 +1,4 @@
+---
+comment: Puppet Fail by Empty Catalog
+description: A task to test Puppet failure if the catalog is empty
+type: puppet
