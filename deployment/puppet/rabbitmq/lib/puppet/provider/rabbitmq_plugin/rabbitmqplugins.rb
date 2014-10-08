@@ -17,6 +17,7 @@ Puppet::Type.type(:rabbitmq_plugin).provide(:rabbitmqplugins) do
       end
     end
   end
+
   defaultfor :feature => :posix
 
   def self.instances
