@@ -1,4 +1,14 @@
-Puppet::Type.type(:rabbitmq_plugin).provide(:rabbitmqplugins) do
+require File.join File.dirname(__FILE__), '../rabbitmq_common.rb'
+
+Puppet::Type.type(:rabbitmq_plugin).provide(:rabbitmqplugins, :parent => Puppet::Provider::Rabbitmq_common) do
+
+  if Puppet::PUPPETVERSION.to_f < 3
+    commands :rabbitmqctl => 'rabbitmqctl'
+  else
+    has_command(:rabbitmqctl, 'rabbitmqctl') do
+      environment :HOME => '/tmp'
+    end
+  end
 
   if Puppet::PUPPETVERSION.to_f < 3
     if Facter.value(:osfamily) == 'RedHat'
@@ -21,6 +31,7 @@ Puppet::Type.type(:rabbitmq_plugin).provide(:rabbitmqplugins) do
   defaultfor :feature => :posix
 
   def self.instances
+    self.wait_for_rabbitmq
     rabbitmqplugins('list', '-E').split(/\n/).map do |line|
       if line.split(/\s+/)[1] =~ /^(\S+)$/
         new(:name => $1)
@@ -39,6 +50,7 @@ Puppet::Type.type(:rabbitmq_plugin).provide(:rabbitmqplugins) do
   end
 
   def exists?
+    self.class.wait_for_rabbitmq
     rabbitmqplugins('list', '-E').split(/\n/).detect do |line|
       line.split(/\s+/)[1].match(/^#{resource[:name]}$/)
     end

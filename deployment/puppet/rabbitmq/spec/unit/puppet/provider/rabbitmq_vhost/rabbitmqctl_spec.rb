@@ -1,8 +1,5 @@
-require 'puppet'
-require 'mocha'
-RSpec.configure do |config|
-  config.mock_with :mocha
-end
+require 'spec_helper'
+
 provider_class = Puppet::Type.type(:rabbitmq_vhost).provider(:rabbitmqctl)
 describe provider_class do
   before :each do
@@ -10,8 +7,10 @@ describe provider_class do
       {:name => 'foo'}
     )
     @provider = provider_class.new(@resource)
+    @provider.class.stubs(:wait_for_rabbitmq).returns(true)
   end
   it 'should match vhost names' do
+    @provider.class.expects(:wait_for_rabbitmq).once
     @provider.expects(:rabbitmqctl).with('list_vhosts').returns <<-EOT
 Listing vhosts ...
 foo
@@ -20,6 +19,7 @@ EOT
     @provider.exists?.should == 'foo'
   end
   it 'should not match if no vhosts on system' do
+    @provider.class.expects(:wait_for_rabbitmq).once
     @provider.expects(:rabbitmqctl).with('list_vhosts').returns <<-EOT
 Listing vhosts ...
 ...done.
@@ -27,6 +27,7 @@ EOT
     @provider.exists?.should be_nil
   end
   it 'should not match if no matching vhosts on system' do
+    @provider.class.expects(:wait_for_rabbitmq).once
     @provider.expects(:rabbitmqctl).with('list_vhosts').returns <<-EOT
 Listing vhosts ...
 fooey

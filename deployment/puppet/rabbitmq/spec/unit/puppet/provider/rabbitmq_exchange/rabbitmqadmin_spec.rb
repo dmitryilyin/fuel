@@ -1,9 +1,7 @@
-require 'puppet'
-require 'mocha'
-RSpec.configure do |config|
-  config.mock_with :mocha
-end
+require 'spec_helper'
+
 provider_class = Puppet::Type.type(:rabbitmq_exchange).provider(:rabbitmqadmin)
+
 describe provider_class do
   before :each do
     @resource = Puppet::Type::Rabbitmq_exchange.new(
@@ -11,9 +9,16 @@ describe provider_class do
        :type => :topic}
     )
     @provider = provider_class.new(@resource)
+    @provider.class.stubs(:wait_for_rabbitmq).returns(true)
+  end
+
+  it 'should wait for rabbit on exists?' do
+    @provider.class.expects(:wait_for_rabbitmq).once
+    @provider.exists?
   end
 
   it 'should return instances' do
+    provider_class.expects(:wait_for_rabbitmq).once
     provider_class.expects(:rabbitmqctl).with('list_vhosts').returns <<-EOT
 Listing vhosts ...
 /
