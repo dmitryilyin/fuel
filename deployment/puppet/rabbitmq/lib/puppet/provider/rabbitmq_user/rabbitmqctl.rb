@@ -12,23 +12,24 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
 
   defaultfor :feature => :posix
 
-  def self.rabbitmqctl_safe(timeout=120, *args)
-    loop do
-      Timeout::timeout(timeout) do
-        begin
-          return list = rabbitmqctl(*args)
-          break
-        rescue Puppet::ExecutionFailure => e
-          Puppet::debug("RabbitMQ is not ready, retrying.\nError message: #{e}")
-        end
-        sleep 2
+  def self.wait_for_rabbitmq(count=120, step=1)
+    Puppet.debug "Waiting #{count * step} seconds for RabbitMQ to become online!"
+    (0...count).each do |n|
+      begin
+        rabbitmqctl 'status'
+      rescue Puppet::ExecutionFailure
+        sleep step
+      else
+        Puppet.debug "RabbitMQ is online after #{n * step} seconds"
+        return true
       end
-      raise Puppet::Error, "RabbitMQ is not ready after timeout #{timeout} expired"
     end
+    raise Puppet::Error, "RabbitMQ is not ready after #{count * step} seconds expired!"
   end
 
   def self.instances
-    rabbitmqctl_safe('list_users').split(/\n/)[1..-2].collect do |line|
+    wait_for_rabbitmq
+    rabbitmqctl('list_users').split(/\n/)[1..-2].collect do |line|
       if line =~ /^(\S+)(\s+\[.*?\]|)$/
         new(:name => $1)
       else
@@ -38,7 +39,7 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
   end
 
   def create
-    rabbitmqctl_safe('add_user', resource[:name], resource[:password])
+    rabbitmqctl('add_user', resource[:name], resource[:password])
     if resource[:admin] == :true
       make_user_admin()
     end
@@ -48,11 +49,12 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
   end
 
   def destroy
-    rabbitmqctl_safe('delete_user', resource[:name])
+    rabbitmqctl('delete_user', resource[:name])
   end
 
   def exists?
-    rabbitmqctl_safe('list_users').split(/\n/)[1..-2].detect do |line|
+    wait_for_rabbitmq
+    rabbitmqctl('list_users').split(/\n/)[1..-2].detect do |line|
       line.match(/^#{Regexp.escape(resource[:name])}(\s+(\[.*?\]|\S+)|)$/)
     end
   end
@@ -83,7 +85,7 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
     else
       usertags = get_user_tags
       usertags.delete('administrator')
-      rabbitmqctl_safe('set_user_tags', resource[:name], usertags.entries.sort)
+      rabbitmqctl('set_user_tags', resource[:name], usertags.entries.sort)
     end
   end
 
@@ -94,18 +96,18 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
     if is_admin
       usertags.add("administrator")
     end
-    rabbitmqctl_safe('set_user_tags', resource[:name], usertags.entries.sort)
+    rabbitmqctl('set_user_tags', resource[:name], usertags.entries.sort)
   end
 
   def make_user_admin
     usertags = get_user_tags
     usertags.add('administrator')
-    rabbitmqctl_safe('set_user_tags', resource[:name], usertags.entries.sort)
+    rabbitmqctl('set_user_tags', resource[:name], usertags.entries.sort)
   end
 
   private
   def get_user_tags
-    match = rabbitmqctl_safe('list_users').split(/\n/)[1..-2].collect do |line|
+    match = rabbitmqctl('list_users').split(/\n/)[1..-2].collect do |line|
       line.match(/^#{Regexp.escape(resource[:name])}\s+\[(.*?)\]/)
     end.compact.first
     Set.new(match[1].split(/, /)) if match
