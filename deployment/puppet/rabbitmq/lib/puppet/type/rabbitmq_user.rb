@@ -11,19 +11,25 @@ Puppet::Type.newtype(:rabbitmq_user) do
     end
   end
 
+  autorequire(:service) { 'rabbitmq-server' }
+
   newparam(:name, :namevar => true) do
     desc 'Name of user'
     newvalues(/^\S+$/)
   end
 
-  # newproperty(:password) do
+  # there is no way to extract password or its hash
   newparam(:password) do
     desc 'User password to be set *on creation*'
+    defaultto do
+      raise ArgumentError, 'Must set password when creating user'
+    end
   end
 
   newproperty(:admin) do
     desc 'rather or not user should be an admin'
     newvalues(/true|false/)
+    newvalues(:true, :false)
     munge do |value|
       # converting to_s incase its a boolean
       value.to_s.to_sym
@@ -31,10 +37,15 @@ Puppet::Type.newtype(:rabbitmq_user) do
     defaultto :false
   end
 
-  validate do
-    if self[:ensure] == :present and ! self[:password]
-      raise ArgumentError, 'must set password when creating user' unless self[:password]
+  newproperty(:tags, :array_matching => :all) do
+    desc 'additional tags for the user'
+
+    # use exact array matching
+    # admin tag is bypassed by the provider
+    def insync?(is)
+      is.sort == should.sort
     end
+
   end
 
 end
