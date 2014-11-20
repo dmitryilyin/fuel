@@ -542,46 +542,32 @@ class osnailyfacter::cluster_ha {
         }
       }
 
-      # TODO(bogdando) move exec checkers to puppet native types for haproxy backends
-      if $primary_controller {
-        exec { 'wait-for-haproxy-keystone-backend':
-          command   => "echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep '^keystone-1,' | egrep -v ',FRONTEND,|,BACKEND,' | grep -qv ',INI,' &&
-                        echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep -q '^keystone-1,BACKEND,.*,UP,'",
-          path      => ['/usr/bin', '/usr/sbin', '/sbin', '/bin'],
-          try_sleep => 5,
-          tries     => 60,
-          require   => Package['socat'],
-        }
-        exec { 'wait-for-haproxy-keystone-admin-backend':
-          command   => "echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep '^keystone-2,' | egrep -v ',FRONTEND,|,BACKEND,' | grep -qv ',INI,' &&
-                        echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep -q '^keystone-2,BACKEND,.*,UP,'",
-          path      => ['/usr/bin', '/usr/sbin', '/sbin', '/bin'],
-          try_sleep => 5,
-          tries     => 60,
-          require   => Package['socat'],
-        }
+      # wait-for-haproxy-keystone-backend
+      haproxy_backend_status { 'keystone-1' :
+        url => "http://${::fuel_settings['public_vip']}:10000/;csv",
+      }
 
-        Openstack::Ha::Haproxy_service <| |> -> Exec<| title=='wait-for-haproxy-keystone-admin-backend' |>
-        Openstack::Ha::Haproxy_service <| |> -> Exec<| title=='wait-for-haproxy-keystone-backend' |>
+      # wait-for-haproxy-keystone-admin-backend
+      haproxy_backend_status { 'keystone-2' :
+        url => "http://${::fuel_settings['management_vip']}:10000/;csv",
+      }
 
-        Class['keystone', 'openstack::ha::keystone']-> Exec<| title=='wait-for-haproxy-keystone-backend' |>
-        Class['keystone', 'openstack::ha::keystone']-> Exec<| title=='wait-for-haproxy-keystone-admin-backend' |>
+      Openstack::Ha::Haproxy_service <| |> -> haproxy_backend_status <| |>
 
-        if $::use_neutron {
-          Exec<| title=='wait-for-haproxy-keystone-backend' |> -> Exec <| title == 'waiting-for-neutron-api' |>
-          Exec<| title=='wait-for-haproxy-keystone-admin-backend' |> -> Exec <| title == 'waiting-for-neutron-api' |>
-        }
+      Class['keystone', 'openstack::ha::keystone'] -> Haproxy_backend_status['keystone-1']
+      Class['keystone', 'openstack::ha::keystone'] -> Haproxy_backend_status['keystone-2']
+
+      if $::use_neutron {
+        Haproxy_backend_status['keystone-1'] -> Exec <| title == 'waiting-for-neutron-api' |>
+        Haproxy_backend_status['keystone-2'] -> Exec <| title == 'waiting-for-neutron-api' |>
       }
 
       if ! $::use_neutron {
         if $primary_controller {
-          exec { 'wait-for-haproxy-nova-backend':
-            command   => "echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep '^nova-api-2,' | egrep -v ',FRONTEND,|,BACKEND,' | grep -qv ',INI,' &&
-                          echo show stat | socat unix-connect:///var/lib/haproxy/stats stdio | grep -q '^nova-api-2,BACKEND,.*,UP,'",
-            path      => ['/usr/bin', '/usr/sbin', '/sbin', '/bin'],
-            try_sleep => 5,
-            tries     => 60,
-            require   => Package['socat'],
+
+          # wait-for-haproxy-nova-backend
+          haproxy_backend_status { 'nova-api-2' :
+            url => "http://${::fuel_settings['management_vip']}:10000/;csv",
           }
 
           nova_floating_range { $floating_ips_range:
@@ -595,19 +581,19 @@ class osnailyfacter::cluster_ha {
             api_retries     => 10,
           }
           Class['nova::api', 'openstack::ha::nova', 'nova::keystone::auth'] ->
-          Exec<| title=='wait-for-haproxy-nova-backend' |> ->
+          Haproxy_backend_status['nova-api-2'] ->
           Nova_floating_range <| |>
 
           Class['keystone', 'openstack::ha::keystone']->
-          Exec<| title=='wait-for-haproxy-keystone-backend' |> ->
+          Haproxy_backend_status['keystone-1'] ->
           Nova_floating_range <| |>
 
           Class['keystone', 'openstack::ha::keystone']->
-          Exec<| title=='wait-for-haproxy-keystone-admin-backend' |> ->
+          Haproxy_backend_status['keystone-2'] ->
           Nova_floating_range <| |>
 
           Openstack::Ha::Haproxy_service <| |> ->
-          Exec<| title=='wait-for-haproxy-nova-backend' |>
+          Haproxy_backend_status['nova-api-2']
         }
       }
       if ($::use_ceph){
