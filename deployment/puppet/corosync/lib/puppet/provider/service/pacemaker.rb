@@ -10,8 +10,8 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Pac
   # :master - The service is running in the master mode on any node
   # :local  - The service is running on the local node
   START_MODE_MULTISTATE = :master
-  START_MODE_CLONE      = :global
-  START_MODE_SIMPLE     = :global
+  START_MODE_CLONE = :global
+  START_MODE_SIMPLE = :global
 
   # what method should be used to stop the service?
   # :global - Stop the running service by disabling it
@@ -19,36 +19,36 @@ Puppet::Type.type(:service).provide :pacemaker, :parent => Puppet::Provider::Pac
   # Note: by default restart does not stop services
   # if they are not running locally on the node
   STOP_MODE_MULTISTATE = :local
-  STOP_MODE_CLONE      = :local
-  STOP_MODE_SIMPLE     = :global
+  STOP_MODE_CLONE = :local
+  STOP_MODE_SIMPLE = :global
 
   # what service is considered running?
   # :global - The service is running on any node
   # :local  - The service is running on the local node
   STATUS_MODE_MULTISTATE = :local
-  STATUS_MODE_CLONE      = :local
-  STATUS_MODE_SIMPLE     = :local
+  STATUS_MODE_CLONE = :local
+  STATUS_MODE_SIMPLE = :local
 
   # try to stop and disable the basic init/upstart service
-  DISABLE_BASIC_SERVICE   = true
+  DISABLE_BASIC_SERVICE = true
   # add location constraint to allow the service on the current node
   # useful for asymmetric cluster mode
   ADD_LOCATION_CONSTRAINT = true
   # restart the service only if it's running on this node
   # and skip restart if it's running elsewhere
-  RESTART_ONLY_IF_LOCAL   = true
+  RESTART_ONLY_IF_LOCAL = true
 
   # cleanup the primitive before the status action.
   CLEANUP_ON_STATUS = false
   # cleanup the primitive before the start action
-  CLEANUP_ON_START  = true
+  CLEANUP_ON_START = true
   # cleanup the primitive before the stop action
-  CLEANUP_ON_STOP   = true
+  CLEANUP_ON_STOP = true
 
-  commands :crm_node      => 'crm_node'
-  commands :crm_resource  => 'crm_resource'
+  commands :crm_node => 'crm_node'
+  commands :crm_resource => 'crm_resource'
   commands :crm_attribute => 'crm_attribute'
-  commands :cibadmin      => 'cibadmin'
+  commands :cibadmin => 'cibadmin'
 
   # hostname of the current node
   # @return [String]

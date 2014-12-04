@@ -258,6 +258,26 @@
             <op id="p_haproxy-stop-0" interval="0" name="stop" timeout="30"/>
           </operations>
         </primitive>
+        <group id="test">
+          <primitive class="ocf" id="test1" provider="pacemaker" type="Dummy">
+            <instance_attributes id="test1-instance_attributes"/>
+            <operations>
+              <op id="test1-monitor-interval-60s" interval="60s" name="monitor"/>
+            </operations>
+          </primitive>
+          <primitive class="ocf" id="test2" provider="pacemaker" type="Dummy">
+            <instance_attributes id="test2-instance_attributes"/>
+            <operations>
+              <op id="test2-monitor-interval-60s" interval="60s" name="monitor"/>
+            </operations>
+          </primitive>
+          <primitive class="ocf" id="test3" provider="pacemaker" type="Dummy">
+            <instance_attributes id="test3-instance_attributes"/>
+            <operations>
+              <op id="test3-monitor-interval-60s" interval="60s" name="monitor"/>
+            </operations>
+          </primitive>
+        </group>
       </clone>
     </resources>
     <constraints>

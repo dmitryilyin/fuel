@@ -1,15 +1,37 @@
 require 'rexml/document'
+require 'rexml/formatters/pretty'
 require 'timeout'
+
+# make rexml's attributes to be sorted by their name
+# when iterating throuth them
+# instead of randomly placing them each time
+module REXML
+  class Attributes
+    def each_value # :yields: attribute
+      keys.sort.each do |key|
+        yield fetch key
+      end
+    end
+  end
+end
 
 class Puppet::Provider::Pacemaker_common < Puppet::Provider
 
-  @cib = nil
-  @primitives = nil
-  @primitives_structure = nil
+  def initialize(*args)
+    cib_reset
+    super
+  end
 
-  RETRY_COUNT = 360
-  RETRY_STEP = 5
-  DEBUG_SHOW_PROPERTIES = %w(symmetric-cluster no-quorum-policy)
+  def pacemaker_common_options
+    {
+        :retry_count => 360,
+        :retry_step => 5,
+        :retry_timeout => 30,
+        :retry_false_is_failure => true,
+        :retry_fail_on_timeout => true,
+        :debug_show_properties => %w(symmetric-cluster no-quorum-policy),
+    }
+  end
 
   # CIB and its sections
   ######################
@@ -23,20 +45,16 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
 
   # reset all saved variables to obtain new data
   def cib_reset
-    # debug 'Reset CIB memoization'
     @raw_cib = nil
     @cib = nil
     @primitives = nil
     @primitives_structure = nil
-    @constraints_structure = nil
+    @locations_structure = nil
+    @colocations_structure = nil
+    @orders_structure = nil
     @nodes_structure = nil
     @cluster_properties_structure = nil
-  end
-
-  # get status CIB section
-  # @return [REXML::Element] at /cib/status
-  def cib_section_status
-    REXML::XPath.match cib, '/cib/status'
+    @resource_defaults_structure = nil
   end
 
   # get lrm_rsc_ops section from lrm_resource section CIB section
@@ -44,13 +62,14 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # at /cib/status/node_state/lrm[@id="node-name"]/lrm_resources/lrm_resource[@id="resource-name"]/lrm_rsc_op
   # @return [REXML::Element]
   def cib_section_lrm_rsc_ops(lrm_resource)
+    return unless lrm_resource.is_a? REXML::Element
     REXML::XPath.match lrm_resource, 'lrm_rsc_op'
   end
 
   # get node_state CIB section
   # @return [REXML::Element] at /cib/status/node_state
   def cib_section_nodes_state
-    REXML::XPath.match cib_section_status, 'node_state'
+    REXML::XPath.match cib, '//node_state'
   end
 
   # get all 'primitive' sections from CIB
@@ -64,6 +83,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # at /cib/status/node_state/lrm[@id="node-name"]/lrm_resources/lrm_resource
   # @return [REXML::Element]
   def cib_section_lrm_resources(lrm)
+    return unless lrm.is_a? REXML::Element
     REXML::XPath.match lrm, 'lrm_resources/lrm_resource'
   end
 
@@ -76,6 +96,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # get all rule elements from the constraint element
   # @return [Array<REXML::Element>] at /cib/configuration/constraints/*/rule
   def cib_section_constraint_rules(constraint)
+    return unless constraint.is_a? REXML::Element
     REXML::XPath.match constraint, 'rule'
   end
 
@@ -83,6 +104,18 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [REXML::Element]
   def cib_section_cluster_property
     REXML::XPath.match(cib, '/cib/configuration/crm_config/cluster_property_set').first
+  end
+
+  # get resource defaults CIB section
+  # @return [REXML::Element]
+  def cib_section_resource_defaults
+    REXML::XPath.match(cib, '/cib/configuration/rsc_defaults/meta_attributes').first
+  end
+
+  # get operation defaults CIB section
+  # @return [REXML::Element]
+  def cib_section_operation_defaults
+    REXML::XPath.match(cib, '/cib/configuration/op_defaults/meta_attributes').first
   end
 
   # Helpers
@@ -102,9 +135,11 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # convert element's children to hash
   # of their attributes using key and hash key
   # @param element [REXML::Element]
-  # @param key <String>
+  # @param key <String> use this attribute as hash key
+  # @param tag <String> get only this type of children
   # @return [Hash<String => String>]
-  def elements_to_hash(element, key, tag = nil)
+  def children_elements_to_hash(element, key, tag = nil)
+    return unless element.is_a? REXML::Element
     elements = {}
     children = element.get_elements tag
     return elements unless children
@@ -115,6 +150,45 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       elements.store name, child_structure
     end
     elements
+  end
+
+  # convert element's children to array of their attributes
+  # @param element [REXML::Element]
+  # @param tag [String] get only this type of children
+  # @return [Array<Hash>]
+  def children_elements_to_array(element, tag = nil)
+    return unless element.is_a? REXML::Element
+    elements = []
+    children = element.get_elements tag
+    return elements unless children
+    children.each do |child|
+      child_structure = attributes_to_hash child
+      next unless child_structure['id']
+      elements << child_structure
+    end
+    elements
+  end
+
+  # copy value from one hash_like structure to another
+  # if the value is present
+  # @param from[Hash]
+  # @param from_key [String,Symbol]
+  # @param to [Hash]
+  # @param to_key [String,Symbol,NilClass]
+  def copy_value(from, from_key, to, to_key = nil)
+    value = from[from_key]
+    return value unless value
+    to_key = from_key unless to_key
+    to[to_key] = value
+    value
+  end
+
+  def sort_data(data, key = 'id')
+    data = data.values if data.is_a? Hash
+    data.sort do |x, y|
+      break 0 unless x[key] and y[key]
+      x[key] <=> y[key]
+    end
   end
 
   # Status calculations
@@ -179,6 +253,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       id = resource['id']
       next unless id
       lrm_rsc_ops = cib_section_lrm_rsc_ops lrm_resource
+      next unless lrm_rsc_ops
       ops = decode_lrm_rsc_ops lrm_rsc_ops
       resource.store 'ops', ops
       resource.store 'status', determine_primitive_status(ops)
@@ -198,7 +273,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       next unless op['call-id']
       ops << op
     end
-    ops.sort { |a,b| a['call-id'].to_i <=> b['call-id'].to_i }
+    ops.sort { |a, b| a['call-id'].to_i <=> b['call-id'].to_i }
   end
 
   # get nodes structure with resources and their statuses
@@ -211,7 +286,9 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       id = node['id']
       next unless id
       lrm = node_state.elements['lrm']
+      next unless lrm
       lrm_resources = cib_section_lrm_resources lrm
+      next unless lrm_resources
       resources = decode_lrm_resources lrm_resources
       node.store 'primitives', resources
       @nodes_structure.store id, node
@@ -252,20 +329,20 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
     if node
       nodes.
           fetch(node, {}).
-          fetch('primitives',{}).
+          fetch('primitives', {}).
           fetch(primitive, {}).
           fetch('status', nil)
     else
       statuses = []
-      nodes.each do |k,v|
-        status = v.fetch('primitives',{}).
+      nodes.each do |k, v|
+        status = v.fetch('primitives', {}).
             fetch(primitive, {}).
             fetch('status', nil)
         statuses << status
       end
       status_values = {
-          'stop'   => 0,
-          'start'  => 1,
+          'stop' => 0,
+          'start' => 1,
           'master' => 2,
       }
       statuses.max_by do |status|
@@ -284,12 +361,12 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
     if node
       nodes.
           fetch(node, {}).
-          fetch('primitives',{}).
+          fetch('primitives', {}).
           fetch(primitive, {}).
           fetch('failed', nil)
     else
-      nodes.each do |k,v|
-        failed = v.fetch('primitives',{}).
+      nodes.each do |k, v|
+        failed = v.fetch('primitives', {}).
             fetch(primitive, {}).
             fetch('failed', nil)
         return true if failed
@@ -341,29 +418,36 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       end
 
       if primitive.parent.name and primitive.parent.attributes['id']
-        parent_structure = {
-            'id'   => primitive.parent.attributes['id'],
+        complex_structure = {
+            'id' => primitive.parent.attributes['id'],
             'type' => primitive.parent.name
         }
-        primitive_structure.store 'name', parent_structure['id']
-        primitive_structure.store 'parent', parent_structure
+
+        complex_meta_attributes = primitive.parent.elements['meta_attributes']
+        if complex_meta_attributes
+          complex_meta_attributes_structure = children_elements_to_hash complex_meta_attributes, 'name', 'nvpair'
+          complex_structure.store 'meta_attributes', complex_meta_attributes_structure
+        end
+
+        primitive_structure.store 'name', complex_structure['id']
+        primitive_structure.store 'complex', complex_structure
       end
 
       instance_attributes = primitive.elements['instance_attributes']
       if instance_attributes
-        instance_attributes_structure = elements_to_hash instance_attributes, 'name', 'nvpair'
+        instance_attributes_structure = children_elements_to_hash instance_attributes, 'name', 'nvpair'
         primitive_structure.store 'instance_attributes', instance_attributes_structure
       end
 
       meta_attributes = primitive.elements['meta_attributes']
       if meta_attributes
-        meta_attributes_structure = elements_to_hash meta_attributes, 'name', 'nvpair'
+        meta_attributes_structure = children_elements_to_hash meta_attributes, 'name', 'nvpair'
         primitive_structure.store 'meta_attributes', meta_attributes_structure
       end
 
       operations = primitive.elements['operations']
       if operations
-        operations_structure = elements_to_hash operations, 'id', 'op'
+        operations_structure = children_elements_to_hash operations, 'id', 'op'
         primitive_structure.store 'operations', operations_structure
       end
 
@@ -383,7 +467,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [TrueClass,FalseClass]
   def primitive_is_complex?(primitive)
     return unless primitive_exists? primitive
-    primitives[primitive].key? 'parent'
+    primitives[primitive].key? 'complex'
   end
 
   # check if primitive is clone
@@ -392,7 +476,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   def primitive_is_clone?(primitive)
     is_complex = primitive_is_complex? primitive
     return is_complex unless is_complex
-    primitives[primitive]['parent']['type'] == 'clone'
+    primitives[primitive]['complex']['type'] == 'clone'
   end
 
   # check if primitive is multistate
@@ -401,7 +485,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   def primitive_is_multistate?(primitive)
     is_complex = primitive_is_complex? primitive
     return is_complex unless is_complex
-    primitives[primitive]['parent']['type'] == 'master'
+    primitives[primitive]['complex']['type'] == 'master'
   end
 
   # determine if primitive is managed
@@ -440,7 +524,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [String] cib xml
   def raw_cib
     @raw_cib = cibadmin '-Q'
-    if ! @raw_cib or @raw_cib == ''
+    if !@raw_cib or @raw_cib == ''
       fail 'Could not dump CIB XML!'
     end
     @raw_cib
@@ -452,11 +536,12 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [TrueClass,FalseClass]
   def is_online?
     begin
-      Timeout::timeout(RETRY_STEP * 3) do
+      Timeout::timeout(pacemaker_common_options[:retry_timeout]) do
         dc_version = crm_attribute '-q', '--type', 'crm_config', '--query', '--name', 'dc-version'
         return false unless dc_version
         return false if dc_version.empty?
         return false unless dc
+        return false unless cib_section_nodes_state
         true
       end
     rescue Puppet::ExecutionFailure => e
@@ -473,8 +558,8 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param attribute [String] atttibute's name
   # @param value [String] attribute's value
   def set_primitive_meta_attribute(primitive, attribute, value)
-    options = [ '--quiet', '--resource', primitive ]
-    options += [ '--set-parameter', attribute, '--meta', '--parameter-value', value ]
+    options = ['--quiet', '--resource', primitive]
+    options += ['--set-parameter', attribute, '--meta', '--parameter-value', value]
     retry_block { crm_resource options }
   end
 
@@ -483,6 +568,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   def disable_primitive(primitive)
     set_primitive_meta_attribute primitive, 'target-role', 'Stopped'
   end
+
   alias :stop_primitive :disable_primitive
 
   # enable this primitive
@@ -490,6 +576,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   def enable_primitive(primitive)
     set_primitive_meta_attribute primitive, 'target-role', 'Started'
   end
+
   alias :start_primitive :enable_primitive
 
   # manage this primitive
@@ -508,8 +595,8 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] what primitive to ban
   # @param node [String] on which node this primitive should be banned
   def ban_primitive(primitive, node)
-    options = [ '--quiet', '--resource', primitive, '--node', node ]
-    options += [ '--ban' ]
+    options = ['--quiet', '--resource', primitive, '--node', node]
+    options += ['--ban']
     retry_block { crm_resource options }
   end
 
@@ -517,18 +604,19 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] what primitive to unban
   # @param node [String] on which node this primitive should be unbanned
   def unban_primitive(primitive, node)
-    options = [ '--quiet', '--resource', primitive, '--node', node ]
-    options += [ '--clear' ]
+    options = ['--quiet', '--resource', primitive, '--node', node]
+    options += ['--clear']
     retry_block { crm_resource options }
   end
+
   alias :clear_primitive :unban_primitive
 
   # move this primitive
   # @param primitive [String] what primitive to un-move
   # @param node [String] to which node the primitive should be moved
   def move_primitive(primitive, node)
-    options = [ '--quiet', '--resource', primitive, '--node', node ]
-    options += [ '--move' ]
+    options = ['--quiet', '--resource', primitive, '--node', node]
+    options += ['--move']
     retry_block { crm_resource options }
   end
 
@@ -536,8 +624,8 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] what primitive to un-move
   # @param node [String] from which node the primitive should be un-moved
   def unmove_primitive(primitive, node)
-    options = [ '--quiet', '--resource', primitive, '--node', node ]
-    options += [ '--un-move' ]
+    options = ['--quiet', '--resource', primitive, '--node', node]
+    options += ['--un-move']
     retry_block { crm_resource options }
   end
 
@@ -546,16 +634,24 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param node [String] on which node to cleanup (optional)
   # cleanups on every node if node is not given
   def cleanup_primitive(primitive, node = nil)
-    options = [ '--quiet', '--resource', primitive ]
-    options += [ '--node', node ] if node
-    options += [ '--cleanup' ]
+    options = ['--quiet', '--resource', primitive]
+    options += ['--node', node] if node
+    options += ['--cleanup']
     retry_block { crm_resource options }
   end
 
   # apply the XML patch to CIB
-  # @param xml [String] the patch to apply
-  def apply_cib_patch(xml)
-    retry_block { cibadmin '--patch', '--sync-call', '--xml-text', xml }
+  # @param xml [String, REXML::Element] the patch to apply
+  def cibadmin_apply_patch(xml)
+    xml = xml_pretty_format xml if xml.is_a? REXML::Element
+    retry_block { cibadmin '--force', '--patch', '--sync-call', '--xml-text', xml.to_s }
+  end
+
+  # ask cibadmin to remove the first element matchig the input
+  # @param xml [String, REXML::Element]
+  def cibadmin_remove(xml)
+    xml = xml_pretty_format xml if xml.is_a? REXML::Element
+    retry_block { cibadmin '--force', '--delete', '--sync-call', '--xml-text', xml.to_s }
   end
 
   # Constraints actions
@@ -566,53 +662,70 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [Hash<String => Hash>]
   def decode_constraint_rules(element)
     rules = cib_section_constraint_rules element
-    return {} unless rules.any?
-    rules_structure = {}
+    return [] unless rules.any?
+    rules_array = []
     rules.each do |rule|
       rule_structure = attributes_to_hash rule
-      id = rule_structure['id']
-      next unless id
-      rule_expressions = elements_to_hash rule, 'id'
+      next unless rule_structure['id']
+      rule_expressions = children_elements_to_array rule, 'expression'
       rule_structure.store 'expressions', rule_expressions if rule_expressions
-      rules_structure.store id, rule_structure
+      rules_array << rule_structure
     end
-    rules_structure
+    rules_array.sort_by { |rule| rule['id'] }
   end
 
-  # get primitives configuration structure with primitives and their attributes
+  # decode a single constraint element to the data structure
+  # @param element [REXML::Element]
+  # @return [Hash<String => String>]
+  def decode_constraint(element)
+    return unless element.is_a? REXML::Element
+    return unless element.attributes['id']
+    return unless element.name
+
+    constraint_structure = attributes_to_hash element
+    constraint_structure.store 'type', element.name
+
+    rules = decode_constraint_rules element
+    constraint_structure.store 'rules', rules if rules.any?
+    constraint_structure
+  end
+
+  # location constraints found in the CIB
+  # filter them by the provided tag name
+  # @param type [String] filter this location type
   # @return [Hash<String => Hash>]
-  def constraints
-    return @constraints_structure if @constraints_structure
-    @constraints_structure = {}
+  def constraints(type = nil)
+    locations = {}
     cib_section_constraints.each do |constraint|
-      id = constraint.attributes['id']
-      next unless id
-      constraint_structure = attributes_to_hash constraint
-
-      xml = constraint.to_s
-      constraint_type = nil
-      if xml.start_with? '<rsc_location'
-        constraint_type = 'location'
-      elsif xml.start_with? '<rsc_order'
-        constraint_type = 'order'
-      elsif xml.start_with? '<rsc_colocation'
-        constraint_type = 'colocation'
-      end
-      constraint_structure.store 'type', constraint_type if constraint_type
-
-      rules = decode_constraint_rules constraint
-      constraint_structure.store 'rules', rules
-
-      @constraints_structure.store id, constraint_structure
+      constraint_structure = decode_constraint constraint
+      next unless constraint_structure
+      next unless constraint_structure['id']
+      next unless constraint_structure['type'] == type if type
+      constraint_structure.delete 'type'
+      locations.store constraint_structure['id'], constraint_structure
     end
-    @constraints_structure
+    locations
   end
 
-  # check if constaint with specified id exists
-  # @param id [String]
-  # @return [TrueClass,FalseClass]
-  def constraint_exists?(id)
-    constraints.key? id.to_s
+  # get location constraints and use mnemoisation on the list
+  # @return [Hash<String => Hash>]
+  def constraint_locations
+    return @locations_structure if @locations_structure
+    @locations_structure = constraints 'rsc_location'
+  end
+
+  # get colocation constraints and use mnemoisation on the list
+  # @return [Hash<String => Hash>]
+  def constraint_colocations
+    return @colocations_structure if @colocations_structure
+    @colocations_structure = constraints 'rsc_colocation'
+  end
+
+  # get order constraints and use mnemoisation on the list
+  # @return [Hash<String => Hash>]
+  def constraint_orders
+    return @orders_structure if @orders_structure
+    @orders_structure = constraints 'rsc_order'
   end
 
   # construct the constraint unique name
@@ -643,29 +756,15 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       </diff-added>
     </diff>
     EOF
-    apply_cib_patch xml
+    cibadmin_apply_patch xml
   end
 
   # remove a location constraint
   # @param primitive [String] the primitive's name
   # @param node [String] the node's name
-  # @param score [Numeric,String] score value
-  def constraint_location_remove(primitive, node, score = 100)
+  def constraint_location_remove(primitive, node)
     id = constraint_location_name primitive, node
-    xml = <<-EOF
-    <diff>
-      <diff-removed>
-        <cib>
-          <configuration>
-            <constraints>
-              <rsc_location id="#{id}" node="#{node}" rsc="#{primitive}" score="#{score}"/>
-            </constraints>
-          </configuration>
-        </cib>
-      </diff-removed>
-    </diff>
-    EOF
-    apply_cib_patch xml
+    cibadmin_remove "<rsc_location id='#{id}'/>"
   end
 
   # check if locations constraint for this primitive is
@@ -675,7 +774,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [TrueClass,FalseClass]
   def constraint_location_exists?(primitive, node)
     id = constraint_location_name primitive, node
-    constraint_exists? id
+    constraint_locations.key? id
   end
 
   # Puppet translators
@@ -711,7 +810,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
 
   # retry the given block until it runs without
   # exceptions of return true
-  # or for RETRY_COUNT times with RETRY_STEP sec step
+  # or for retry_count times with retry_step sec step
   # print cluster status report on fail
   # @param options [Hash]
   # :count [Integer] how many times to retry
@@ -719,18 +818,12 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # :fail_on_timeout [true,false] raise error on timeout? (default: true)
   # :false_is_failure [true,false] count false or nil return values as failure? (default: true)
   def retry_block(options = {})
-    default_options = {
-      :count             => RETRY_COUNT,
-      :step              => RETRY_STEP,
-      :fail_on_timeout   => true,
-      :false_is_failure  => true,
-    }
-    options = default_options.merge options
+    options = pacemaker_common_options.merge options
 
-    options[:count].times do
+    options[:retry_count].times do
       begin
         out = yield
-        if options[:false_is_failure]
+        if options[:retry_false_is_failure]
           return out if out
         else
           return out
@@ -738,15 +831,14 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       rescue => e
         Puppet.debug "Execution failure: #{e.message}"
       end
-      sleep options[:step]
+      sleep options[:retry_step]
     end
-    debug cluster_debug_report
-    fail "Execution timeout after #{options[:count] * options[:step]} seconds!" if options[:fail_on_timeout]
+    fail "Execution timeout after #{options[:retry_count] * options[:retry_step]} seconds!" if options[:retry_fail_on_timeout]
   end
 
   # wait for pacemaker to become online
   def wait_for_online
-    debug "Waiting #{RETRY_COUNT * RETRY_STEP} seconds for Pacemaker to become online"
+    debug "Waiting #{pacemaker_common_options[:retry_count] * pacemaker_common_options[:retry_step]} seconds for Pacemaker to become online"
     retry_block { is_online? }
     debug 'Pacemaker is online'
   end
@@ -774,7 +866,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] primitive id
   # @param node [String] on this node if given
   def wait_for_start(primitive, node = nil)
-    message = "Waiting #{RETRY_COUNT * RETRY_STEP} seconds for service '#{primitive}' to start"
+    message = "Waiting #{pacemaker_common_options[:retry_count] * pacemaker_common_options[:retry_step]} seconds for service '#{primitive}' to start"
     message += " on node '#{node}'" if node
     debug message
     retry_block do
@@ -791,7 +883,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] primitive id
   # @param node [String] on this node if given
   def wait_for_master(primitive, node = nil)
-    message = "Waiting #{RETRY_COUNT * RETRY_STEP} seconds for service '#{primitive}' to start master"
+    message = "Waiting #{pacemaker_common_options[:retry_count] * pacemaker_common_options[:retry_step]} seconds for service '#{primitive}' to start master"
     message += " on node '#{node}'" if node
     debug message
     retry_block do
@@ -808,7 +900,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param primitive [String] primitive id
   # @param node [String] on this node if given
   def wait_for_stop(primitive, node = nil)
-    message = "Waiting #{RETRY_COUNT * RETRY_STEP} seconds for service '#{primitive}' to stop"
+    message = "Waiting #{pacemaker_common_options[:retry_count] * pacemaker_common_options[:retry_step]} seconds for service '#{primitive}' to stop"
     message += " on node '#{node}'" if node
     debug message
     retry_block do
@@ -869,8 +961,8 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
       end
       report += '   ' + nodes.join(' | ') + "\n"
     end
-    DEBUG_SHOW_PROPERTIES.each do |p|
-        report += "* #{p}: #{cluster_property_value p}\n" if cluster_property_defined? p
+    pacemaker_common_options[:debug_show_properties].each do |p|
+      report += "* #{p}: #{cluster_property_value p}\n" if cluster_property_defined? p
     end
     report += 'Pacemaker debug block end'
     report += " at '#{tag}'" if tag
@@ -884,7 +976,7 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @return [Hash<String => Hash>]
   def cluster_properties
     return @cluster_properties_structure if @cluster_properties_structure
-    @cluster_properties_structure = elements_to_hash cib_section_cluster_property, 'name'
+    @cluster_properties_structure = children_elements_to_hash cib_section_cluster_property, 'name'
   end
 
   # get the value of a cluster property by it's name
@@ -899,16 +991,16 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
   # @param property_name [String] the name of the property
   # @param property_value [String] the value of the property
   def cluster_property_set(property_name, property_value)
-    options = [ '--quiet', '--type', 'crm_config', '--name', property_name ]
-    options += [ '--update', property_value ]
+    options = ['--quiet', '--type', 'crm_config', '--name', property_name]
+    options += ['--update', property_value]
     retry_block { crm_attribute options }
   end
 
   # delete this cluster's property
   # @param property_name [String] the name of the property
   def cluster_property_delete(property_name)
-    options = [ '--quiet', '--type', 'crm_config', '--name', property_name ]
-    options += [ '--delete' ]
+    options = ['--quiet', '--type', 'crm_config', '--name', property_name]
+    options += ['--delete']
     retry_block { crm_attribute options }
   end
 
@@ -921,4 +1013,199 @@ class Puppet::Provider::Pacemaker_common < Puppet::Provider
     true
   end
 
+  # Resource defaults
+  ###################
+
+  def resource_defaults
+    return @resource_defaults_structure if @resource_defaults_structure
+    @resource_defaults_structure = children_elements_to_hash cib_section_resource_defaults, 'name'
+  end
+
+  def resource_default_value(attribute_name)
+    return unless resource_default_defined? attribute_name
+    resource_defaults[attribute_name]['value']
+  end
+  # crm_attribute --type rsc_defaults --attr-name is-managed --attr-value false
+  def resource_default_set(attribute_name, attribute_value)
+    options = ['--quiet', '--type', 'rsc_defaults', '--attr-name', attribute_name]
+    options += ['--attr-value', attribute_value]
+    retry_block { crm_attribute options }
+  end
+
+  def resource_default_delete(attribute_name)
+    options = ['--quiet', '--type', 'rsc_defaults', '--attr-name', attribute_name]
+    options += ['--delete-attr']
+    retry_block { crm_attribute options }
+  end
+
+  def resource_default_defined?(attribute_name)
+    return false unless resource_defaults.key? attribute_name
+    return false unless resource_defaults[attribute_name].is_a? Hash and resource_defaults[attribute_name]['value']
+    true
+  end
+
+  # XML generation
+  ################
+
+  # create a new xml document
+  # @param path [String,Array<String>] create this sequence of path elements
+  # @param root [REXML::Document] use existing element as a root instead of creating a new one
+  # @return [REXML::Element] element point to the last path component
+  # use .root to get the document root
+  def xml_document(path, root = nil)
+    root = REXML::Document.new unless root
+    element = root
+    path = Array(path) unless path.is_a? Array
+    path.each do |component|
+      element = element.add_element component
+    end
+    element
+  end
+
+  # convert hash to xml element
+  # @param tag [String] what xml tag to create
+  # @param hash [Hash] attributes data structure
+  # @param skip_attributes [String,Array<String>] skip these hash keys
+  # @return [REXML::Element]
+  def xml_element(tag, hash, skip_attributes = nil)
+    return unless hash.is_a? Hash
+    element = REXML::Element.new tag
+    hash.each do |attribute, value|
+      attribute = attribute.to_s
+      # skip attributes that were specified to be skipped
+      next if skip_attributes == attribute or
+          (skip_attributes.respond_to? :include? and skip_attributes.include? attribute)
+      # skip array and hash values. add only scalar ones
+      next if value.is_a? Array or value.is_a? Hash
+      element.add_attribute attribute, value
+    end
+    element
+  end
+
+  def xml_primitive(data)
+    return unless data and data.is_a? Hash
+    primitive_skip_attributes = %w(name parent instance_attributes operations meta_attributes utilization)
+    primitive_element = xml_element 'primitive', data, primitive_skip_attributes
+
+    # instance attributes
+    if data['instance_attributes'].respond_to? :each and data['instance_attributes'].any?
+      instance_attributes_document = xml_document 'instance_attributes', primitive_element
+      instance_attributes_document.add_attribute 'id', data['id'] + '-instance_attributes'
+      sort_data(data['instance_attributes']).each do |instance_attribute|
+        instance_attribute_element = xml_element 'nvpair', instance_attribute
+        instance_attributes_document.add_element instance_attribute_element if instance_attribute_element
+      end
+    end
+
+    # meta attributes
+    if data['meta_attributes'].respond_to? :each and data['meta_attributes'].any?
+      complex_meta_attributes_document = xml_document 'meta_attributes', primitive_element
+      complex_meta_attributes_document.add_attribute 'id', data['id'] + '-meta_attributes'
+      sort_data(data['meta_attributes']).each do |meta_attribute|
+        meta_attribute_element = xml_element 'nvpair', meta_attribute
+        complex_meta_attributes_document.add_element meta_attribute_element if meta_attribute_element
+      end
+    end
+
+    # operations
+    if data['operations'].respond_to? :each and data['operations'].any?
+      operations_document = xml_document 'operations', primitive_element
+      sort_data(data['operations']).each do |operation|
+        operation_element = xml_element 'op', operation
+        operations_document.add_element operation_element if operation_element
+      end
+    end
+
+    # complex structure
+    if data['complex'].is_a? Hash and data['complex']['type']
+      skip_complex_attributes = 'type'
+      supported_complex_types = %w(clone master meta_attributes)
+      complex_tag_name = data['complex']['type']
+      return unless supported_complex_types.include? complex_tag_name
+      complex_element = xml_element complex_tag_name, data['complex'], skip_complex_attributes
+
+      # complex meta attributes
+      if data['complex']['meta_attributes'].respond_to? :each and data['complex']['meta_attributes'].any?
+        complex_meta_attributes_document = xml_document 'meta_attributes', complex_element
+        complex_meta_attributes_document.add_attribute 'id', data['complex']['id'] + '-meta_attributes'
+        sort_data(data['complex']['meta_attributes']).each do |meta_attribute|
+          complex_meta_attribute_element = xml_element 'nvpair', meta_attribute
+          complex_meta_attributes_document.add_element complex_meta_attribute_element if complex_meta_attribute_element
+        end
+      end
+
+      complex_element.add_element primitive_element
+      return complex_element
+    end
+
+    primitive_element
+  end
+
+  # generate rsc_location elements from data structure
+  # @param data [Hash]
+  # @return [REXML::Element]
+  def xml_rsc_location(data)
+    return unless data and data.is_a? Hash
+    # create an element from the top level hash and skip 'rules' attribute
+    # because if should be processed as children elements and useless 'type' attribute
+    rsc_location_element = xml_element 'rsc_location', data, %w(rules type)
+
+    # there are no rule elements
+    return rsc_location_element unless data['rules'] and data['rules'].respond_to? :each
+
+    # create a rule element with attributes and treat expressions as children elements
+    sort_data(data['rules']).each do |rule|
+      next unless rule.is_a? Hash
+      rule_element = xml_element 'rule', rule, 'expressions'
+      # add expression children elements to the rule element if the are present
+      if rule['expressions'] and rule['expressions'].respond_to? :each
+        sort_data(rule['expressions']).each do |expression|
+          next unless expression.is_a? Hash
+          expression_element = xml_element 'expression', expression
+          rule_element.add_element expression_element
+        end
+      end
+      rsc_location_element.add_element rule_element
+    end
+    rsc_location_element
+  end
+
+  # generate rsc_colocation elements from data structure
+  # @param data [Hash]
+  # @return [REXML::Element]
+  def xml_rsc_colocation(data)
+    return unless data and data.is_a? Hash
+    xml_element 'rsc_colocation', data, 'type'
+  end
+
+  # generate rsc_order elements from data structure
+  # @param data [Hash]
+  # @return [REXML::Element]
+  def xml_rsc_order(data)
+    return unless data and data.is_a? Hash
+    xml_element 'rsc_order', data, 'type'
+  end
+
+  # output xml element as the actual xml text with indentation
+  # @param element [REXML::Element]
+  # @return [String]
+  def xml_pretty_format(element)
+    return unless element.is_a? REXML::Element
+    formatter = REXML::Formatters::Pretty.new
+    formatter.compact = true
+    xml=''
+    formatter.write element, xml
+    xml + "\n"
+  end
+
 end
+
+# TODO: groups
+# TODO: op_defaults
+# TODO: split to subfiles
+# TODO: resource <-> constraint autorequire/autobefore
+# TODO: constraint fail is resource missing
+# TODO: resource refuse to delete if constrains present or remove them too
+# TODO: refactor status-metadata processing
+# TODO: refactor options
+# TODO: options and rules arrays sort? sets?
