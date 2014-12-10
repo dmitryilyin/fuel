@@ -1,6 +1,6 @@
 require 'puppet'
-require 'set'
-Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
+require File.join File.dirname(__FILE__), '../rabbitmq_common.rb'
+Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl, :parent => Puppet::Provider::Rabbitmq_common) do
 
   if Puppet::PUPPETVERSION.to_f < 3
     commands :rabbitmqctl => 'rabbitmqctl'
@@ -13,8 +13,11 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
   defaultfor :feature => :posix
 
   def self.instances
-    rabbitmqctl('-q', 'list_users').split(/\n/).collect do |line|
-      if line =~ /^(\S+)(\s+\[.*?\]|)$/
+    self.wait_for_online
+    self.run_with_retries {
+      rabbitmqctl('-q', 'list_users')
+    }.split(/\n/).collect do |line|
+      if line =~ /^(\S+)(\s+\S+|)$/
         new(:name => $1)
       else
         raise Puppet::Error, "Cannot parse invalid user line: #{line}"
@@ -37,7 +40,10 @@ Puppet::Type.type(:rabbitmq_user).provide(:rabbitmqctl) do
   end
 
   def exists?
-    rabbitmqctl('-q', 'list_users').split(/\n/).detect do |line|
+    self.class.wait_for_online
+    out = self.class.run_with_retries {
+      rabbitmqctl('-q', 'list_users')
+    }.split(/\n/).detect do |line|
       line.match(/^#{Regexp.escape(resource[:name])}(\s+(\[.*?\]|\S+)|)$/)
     end
   end
