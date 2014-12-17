@@ -10,6 +10,8 @@ describe 'Puppet::Type.type(:rabbitmq_user_permissions).provider(:rabbitmqctl)' 
       {:name => 'foo@bar'}
     )
     @provider = @provider_class.new(@resource)
+    @provider.class.stubs(:wait_for_online).returns(true)
+    @provider
   end
   after :each do
     @provider_class.instance_variable_set(:@users, nil)
