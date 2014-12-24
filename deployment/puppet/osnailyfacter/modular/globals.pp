@@ -137,9 +137,13 @@ if $use_neutron {
 $queue_provider           = 'rabbitmq'
 $custom_mysql_setup_class = 'galera'
 
-$controller = filter_nodes($nodes_hash, 'role', 'controller')
+$primary_controllers   = filter_nodes($nodes_hash, 'role', 'primary-controller')
+$secondary_controllers = filter_nodes($nodes_hash, 'role', 'controller')
+$controllers = concat($primary_controllers, $secondary_controllers)
+$controller  = $controllers[0]
+
 $controller_node_address = $controller[0]['internal_address']
-$controller_node_public = $controller[0]['public_address']
+$controller_node_public  = $controller[0]['public_address']
 $roles = node_roles($nodes_hash, hiera('uid'))
 
 # AMQP client configuration
