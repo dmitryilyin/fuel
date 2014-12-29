@@ -148,24 +148,16 @@ Process the astute.yaml data to the settings structure.
 
       Settings['storage_address'] = node['storage_address']
       Settings['storage_netmask'] = node['storage_netmask']
+
+      Settings['neutron_config']     = {}
+      Settings['novanetwork_params'] = data['novanetwork_parameters']
+      Settings['network_provider']   = 'nova'
+      Settings['network_config']     = {}
+      Settings['network_manager']    = "nova.network.manager.#{data['novanetwork_parameters']}"
     end
 
-    #
-    # settings['neutron_config']     = {}
-    # $novanetwork_params = hiera('novanetwork_parameters')
-    # $network_size       = $novanetwork_params['network_size']
-    # $num_networks       = $novanetwork_params['num_networks']
-    # $vlan_start         = $novanetwork_params['vlan_start']
-    # $network_provider   = 'nova'
-    # $network_config = {
-    #     'vlan_start'     => $vlan_start,
-    # }
-    #settings['network_manager']    = "nova.network.manager.${novanetwork_params['network_manager']}"
-
-    #?
     Settings['queue_provider'] = 'rabbitmq'
     Settings['custom_mysql_setup_class'] = 'galera'
-    #?
 
     Settings['nova_settings'] = {}
     Settings['nova_settings']['interval'] = '60'
